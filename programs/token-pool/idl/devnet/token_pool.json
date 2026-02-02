@@ -1,0 +1,1218 @@
+{
+  "address": "GomZwW2f2AyqTMfqRhNxbuN8RyEbArD4r93wY8zaRQxw",
+  "metadata": {
+    "name": "token_pool",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Token pool program for Zorb privacy system - handles SPL token deposits and withdrawals"
+  },
+  "instructions": [
+    {
+      "name": "deposit",
+      "docs": [
+        "Process a deposit: transfer tokens from depositor to vault.",
+        "# Accounts",
+        "See `DepositAccounts` for the required accounts."
+      ],
+      "discriminator": [
+        0
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool configuration account (writable for state updates)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault token account (writable for receiving tokens) PDA derived from: [\"vault\", pool_config]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositor_token",
+          "docs": [
+            "Depositor's token account (writable for transfer)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositor",
+          "docs": [
+            "Depositor authority (signer for transfer)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program (required for Transfer CPI)"
+          ]
+        },
+        {
+          "name": "token_pool_program",
+          "docs": [
+            "Token pool program account (required for self-CPI event emission)"
+          ],
+          "address": "GomZwW2f2AyqTMfqRhNxbuN8RyEbArD4r93wY8zaRQxw"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Process a withdrawal: transfer tokens from vault to recipient.",
+        "# Accounts",
+        "See `WithdrawAccounts` for the required accounts."
+      ],
+      "discriminator": [
+        1
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool configuration account (PDA signer for vault operations)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault token account (source for transfers) PDA derived from: [\"vault\", pool_config]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "hub_authority",
+          "docs": [
+            "Hub authority PDA (delegate for vault transfers)"
+          ]
+        },
+        {
+          "name": "token_pool_program",
+          "docs": [
+            "Token pool program account (required for self-CPI event emission)"
+          ],
+          "address": "GomZwW2f2AyqTMfqRhNxbuN8RyEbArD4r93wY8zaRQxw"
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program (required for Approve CPI)"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "init_pool",
+      "docs": [
+        "Initialize a new token pool.",
+        "Creates pool config and vault accounts."
+      ],
+      "discriminator": [
+        64
+      ],
+      "accounts": [
+        {
+          "name": "mint_account",
+          "docs": [
+            "SPL Token mint to register"
+          ]
+        },
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA [\"token_pool\", mint] to create"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault PDA [\"vault\", pool_config] to create Note: Manually created as token account (owned by token program, not pool program)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority for this pool (pays for account creation)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program (required for CPI, validated to match mint.owner())"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "max_deposit_amount",
+          "docs": [
+            "Maximum tokens allowed per deposit transaction"
+          ],
+          "type": "u64"
+        },
+        {
+          "name": "deposit_fee_rate",
+          "docs": [
+            "Fee rate for deposits in basis points (100 = 1%)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "withdrawal_fee_rate",
+          "docs": [
+            "Fee rate for withdrawals in basis points (100 = 1%)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              4
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_pool_active",
+      "docs": [
+        "Set the active state for a pool."
+      ],
+      "discriminator": [
+        65
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match pool_config.authority"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "is_active",
+          "docs": [
+            "New active state (1 = active/enabled, 0 = inactive/disabled)"
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_fee_rates",
+      "docs": [
+        "Set fee rates for a pool."
+      ],
+      "discriminator": [
+        66
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match pool_config.authority"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "deposit_fee_rate",
+          "docs": [
+            "New deposit fee rate in basis points (max 10000)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "withdrawal_fee_rate",
+          "docs": [
+            "New withdrawal fee rate in basis points (max 10000)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              4
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize_rewards",
+      "docs": [
+        "Finalize pending rewards by updating the reward accumulator.",
+        "Permissionless - anyone can call after UPDATE_SLOT_INTERVAL has passed."
+      ],
+      "discriminator": [
+        67
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_pool_program",
+          "docs": [
+            "Token pool program account (required for self-CPI event emission)"
+          ],
+          "address": "GomZwW2f2AyqTMfqRhNxbuN8RyEbArD4r93wY8zaRQxw"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "fund_rewards",
+      "docs": [
+        "Fund the reward pool with external tokens.",
+        "Permissionless - anyone can fund rewards via token transfer."
+      ],
+      "discriminator": [
+        68
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool configuration account (writable for state updates)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault token account (receives reward tokens)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "mine_sol",
+          "docs": [
+            "Funder's token account (source of reward tokens)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "funder",
+          "docs": [
+            "Funder authority (signer for transfer)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program (required for Transfer CPI)"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "docs": [
+            "Amount of tokens to fund as rewards"
+          ],
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "log",
+      "docs": [
+        "Log an event via CPI (internal use only).",
+        "This instruction is invoked via CPI from within the program to emit events.",
+        "It validates the caller is the program itself via PDA signer."
+      ],
+      "discriminator": [
+        69
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Authority PDA that signed the CPI call. Must be owned by this program and signed via invoke_signed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "sweep_excess",
+      "docs": [
+        "Sweep excess tokens from vault into pending rewards.",
+        "Permissionless - anyone can call. Recovers tokens that arrived in the",
+        "vault outside of normal deposit/fund_rewards flows (e.g., direct transfers)."
+      ],
+      "discriminator": [
+        70
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool configuration account (writable for state updates)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault token account (read-only to check balance)"
+          ]
+        },
+        {
+          "name": "token_pool_program",
+          "docs": [
+            "Token pool program account (required for self-CPI event emission)"
+          ],
+          "address": "GomZwW2f2AyqTMfqRhNxbuN8RyEbArD4r93wY8zaRQxw"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transfer_authority",
+      "docs": [
+        "Initiate two-step authority transfer by setting pending_authority.",
+        "The new authority must call `accept_authority` to complete the transfer."
+      ],
+      "discriminator": [
+        192
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA [\"token_pool\", mint]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Current authority (must be signer, must match pool_config.authority)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "new_authority",
+          "docs": [
+            "New authority address (read-only)"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "accept_authority",
+      "docs": [
+        "Complete two-step authority transfer by accepting pending_authority role.",
+        "Must be called by the `pending_authority` address."
+      ],
+      "discriminator": [
+        193
+      ],
+      "accounts": [
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA [\"token_pool\", mint]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "Pending authority (must be signer, must match pool_config.pending_authority)"
+          ],
+          "signer": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "TokenPoolConfig",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "TokenDepositEvent",
+      "discriminator": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "TokenWithdrawalEvent",
+      "discriminator": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "TokenRewardsFinalizedEvent",
+      "discriminator": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "SweepExcessEvent",
+      "discriminator": [
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "SweepExcessEvent",
+      "docs": [
+        "Event emitted when excess tokens are swept into pending rewards.",
+        "Excess tokens are tokens that arrived in the vault outside of normal",
+        "deposit/fund_rewards flows (e.g., direct transfers, airdrops)."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of excess tokens swept into pending rewards"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when the sweep occurred"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenDepositEvent",
+      "docs": [
+        "Event emitted when tokens are deposited into the token pool."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_balance",
+            "docs": [
+              "Pool balance after deposit"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Gross amount deposited (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "docs": [
+              "Protocol fee (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "net_amount",
+            "docs": [
+              "Net amount credited to shielded balance"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when the deposit occurred"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPoolConfig",
+      "docs": [
+        "Token pool configuration account.",
+        "Stores all state for a single token pool, including:",
+        "- Token identity (mint, vault, asset_id)",
+        "- Epoch-based balance tracking",
+        "- Fee configuration",
+        "- Statistics",
+        "# Reward Accumulator Design",
+        "The accumulator tracks rewards per unit of deposit. Rewards are finalized",
+        "every `UPDATE_SLOT_INTERVAL` slots (~5 minutes).",
+        "## State Fields",
+        "- `finalized_balance`: Balance frozen at last finalization. NOT modified between finalizations.",
+        "- `pending_deposits`: New deposits since last finalization (additive only).",
+        "- `pending_withdrawals`: Withdrawals since last finalization (additive only).",
+        "- `pending_deposit_fees`: Deposit fees collected since last finalization.",
+        "- `pending_withdrawal_fees`: Withdrawal fees collected since last finalization.",
+        "- `reward_accumulator`: Cumulative rewards per unit, scaled by 1e18.",
+        "## Key Properties",
+        "1. **Free deposits/withdrawals**: Between finalizations, deposits and withdrawals only",
+        "modify `pending_deposits` and `pending_withdrawals`. They never touch",
+        "`finalized_balance`, so underflow is impossible during transactions.",
+        "2. **Withdrawers receive rewards**: Since `finalized_balance` is frozen and includes",
+        "funds being withdrawn, withdrawers receive their proportional share of rewards.",
+        "3. **Single validation point**: The invariant `pending_withdrawals <= finalized_balance + pending_deposits`",
+        "is checked only at finalization, not during individual transactions.",
+        "## Finalization Flow",
+        "On `finalize_rewards(current_slot)`:",
+        "1. Check enough slots elapsed since `last_finalized_slot`",
+        "2. Calculate `total_pool = finalized_balance + pending_deposits - pending_withdrawals`",
+        "3. If rewards exist: `accumulator += (pending_rewards * 1e18) / total_pool`",
+        "4. Update: `finalized_balance = total_pool`",
+        "5. Reset: `pending_deposits = 0`, `pending_withdrawals = 0`, `pending_rewards = 0`",
+        "## Example",
+        "```text",
+        "After finalization: finalized_balance = 1000e9 (1000 tokens, 9 decimals)",
+        "User A deposits 500:  pending_deposits = 500e9",
+        "User B withdraws 200: pending_withdrawals = 200e9",
+        "Fees collected: pending_rewards = 50e9 (50 tokens)",
+        "On finalize_rewards:",
+        "total_pool = 1000e9 + 500e9 - 200e9 = 1300e9",
+        "reward_delta = 50e9 * 1e18 / 1300e9 ≈ 38,461,538,461,538,461",
+        "finalized_balance = 1300e9",
+        "```",
+        "To compute a user's reward in circuit:",
+        "```text",
+        "user_reward = user_amount * (current_accumulator - entry_accumulator) / 1e18",
+        "```"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that can update pool config"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "Pending authority for two-step transfer.",
+              "Set by `transfer_authority`, must call `accept_authority` to complete."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "docs": [
+              "Vault token account PDA"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_id",
+            "docs": [
+              "Asset ID (Poseidon hash of mint)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalized_balance",
+            "docs": [
+              "Balance frozen at last finalization (not modified between finalizations).",
+              "**Units:** Token base units (e.g., for USDC with 6 decimals: 1e6 = 1 USDC)",
+              "**Updates on:** `finalize_rewards()` only",
+              "This is the denominator used to compute reward-per-unit during finalization.",
+              "Between finalizations, only pending_deposits/pending_withdrawals change."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "reward_accumulator",
+            "docs": [
+              "Cumulative rewards per unit of deposit, scaled by 1e18.",
+              "**Units:** Scaled fixed-point (rewards * 1e18 / deposits)",
+              "**Updates on:** `finalize_rewards()` only",
+              "To compute user rewards in circuit:",
+              "`user_reward = user_amount * (current_acc - entry_acc) / 1e18`"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending_deposits",
+            "docs": [
+              "Deposits since last finalization, for accumulator calculation only.",
+              "**Units:** Token base units (matches token decimals)",
+              "**Purpose:** Used solely in `finalize_rewards()` to compute the reward",
+              "accumulator denominator: `total_pool = finalized_balance + pending_deposits - pending_withdrawals`.",
+              "This is NOT the source of truth for pool balance (vault balance is).",
+              "**Value tracked:** Principal (amount - fee). This equals the user's ZK",
+              "commitment value. Fees are tracked separately in `pending_deposit_fees`.",
+              "**Updates on:**",
+              "- Deposit instruction: += principal",
+              "- `finalize_rewards()`: reset to 0"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending_withdrawals",
+            "docs": [
+              "Withdrawals since last finalization, for accumulator calculation only.",
+              "**Units:** Token base units (matches token decimals)",
+              "**Purpose:** Used solely in `finalize_rewards()` to compute the reward",
+              "accumulator denominator: `total_pool = finalized_balance + pending_deposits - pending_withdrawals`.",
+              "This is NOT the source of truth for pool balance (vault balance is).",
+              "**Value tracked:** Commitment value being burned (params.amount). This is",
+              "the full amount before withdrawal fee. Fees are tracked separately in",
+              "`pending_withdrawal_fees`.",
+              "**Updates on:**",
+              "- Withdraw instruction: += amount",
+              "- `finalize_rewards()`: reset to 0"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending_deposit_fees",
+            "docs": [
+              "Pending deposit fees waiting to be distributed on next finalization.",
+              "**Units:** Token base units (matches token decimals)",
+              "**Updates on:**",
+              "- Deposit fees: += fee_amount",
+              "- `finalize_rewards()`: reset to 0 after distribution"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_withdrawal_fees",
+            "docs": [
+              "Pending withdrawal fees waiting to be distributed on next finalization.",
+              "**Units:** Token base units (matches token decimals)",
+              "**Updates on:**",
+              "- Withdrawal fees: += fee_amount",
+              "- `finalize_rewards()`: reset to 0 after distribution",
+              "**Note:** These fee fields (deposit + withdrawal) contain only transaction fees.",
+              "External funding is tracked separately in `pending_funded_rewards`. At",
+              "finalization, all three are combined and distributed via the accumulator."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_funded_rewards",
+            "docs": [
+              "Pending externally funded rewards waiting to be distributed.",
+              "**Units:** Token base units (matches token decimals)",
+              "**Updates on:**",
+              "- `fund_rewards()`: += funded_amount",
+              "- `finalize_rewards()`: reset to 0 after distribution",
+              "**Audit Note:** This separation enables the finalization event to report",
+              "fee_rewards vs funded_rewards unambiguously, providing transparency",
+              "on reward sources for indexers and users."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_pad_fees",
+            "docs": [
+              "Padding for u128 alignment (3 × u64 = 24 bytes, need 32 for u128 alignment)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_deposited",
+            "docs": [
+              "Cumulative total deposits (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_withdrawn",
+            "docs": [
+              "Cumulative total withdrawals (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_rewards_distributed",
+            "docs": [
+              "Total rewards distributed over lifetime (in token base units)",
+              "**Updates on:** `finalize_rewards()` after distributing rewards",
+              "This equals the sum of all (fee_rewards + funded_rewards) distributed",
+              "through finalization events over the pool's lifetime."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_deposit_fees",
+            "docs": [
+              "Total deposit fees collected (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_withdrawal_fees",
+            "docs": [
+              "Total withdrawal fees collected (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_funded_rewards",
+            "docs": [
+              "Total rewards funded via fund_rewards instruction (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "_reserved_stats",
+            "docs": [
+              "Reserved for future use (maintains struct alignment)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "max_deposit_amount",
+            "docs": [
+              "Maximum deposit amount per transaction"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "docs": [
+              "Number of deposit transactions"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "withdrawal_count",
+            "docs": [
+              "Number of withdrawal transactions"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_finalized_slot",
+            "docs": [
+              "Slot when rewards were last finalized.",
+              "Moved after withdrawal_count (transfer_count was removed)",
+              "**Updates on:** `finalize_rewards()` only"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deposit_fee_rate",
+            "docs": [
+              "Deposit fee rate in basis points"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "withdrawal_fee_rate",
+            "docs": [
+              "Withdrawal fee rate in basis points"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "decimals",
+            "docs": [
+              "Token decimals"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether this config is active"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for struct alignment (9 bytes to reach 16-byte alignment)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                9
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenRewardsFinalizedEvent",
+      "docs": [
+        "Event emitted when rewards are finalized (accumulator updated).",
+        "**Audit Note:** This event provides unambiguous breakdown of reward sources:",
+        "- `deposit_fees`: Deposit fees collected since last finalization",
+        "- `withdrawal_fees`: Withdrawal fees collected since last finalization",
+        "- `funded_rewards`: External rewards funded via fund_rewards since last finalization",
+        "Indexers can verify: `deposit_fees + withdrawal_fees + funded_rewards` was distributed to the accumulator."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "total_pool",
+            "docs": [
+              "Total pool size at finalization (denominator for reward calculation)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "new_accumulator",
+            "docs": [
+              "New accumulator value (compare across events for APY calculation)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "deposit_fees",
+            "docs": [
+              "Deposit fees distributed (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "withdrawal_fees",
+            "docs": [
+              "Withdrawal fees distributed (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "funded_rewards",
+            "docs": [
+              "Funded rewards distributed (external funding, in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when finalization occurred"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenWithdrawalEvent",
+      "docs": [
+        "Event emitted when tokens are withdrawn from the token pool."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_balance",
+            "docs": [
+              "Pool balance after withdrawal"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Gross amount withdrawn (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "docs": [
+              "Protocol fee (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when the withdrawal occurred"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 16-byte alignment"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "pdas": [
+    {
+      "name": "TokenPoolConfig",
+      "docs": [
+        "Token pool config PDA - per mint",
+        "Seeds: [\"token_pool\", mint]"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            116,
+            111,
+            107,
+            101,
+            110,
+            95,
+            112,
+            111,
+            111,
+            108
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "mint"
+        }
+      ]
+    },
+    {
+      "name": "Vault",
+      "docs": [
+        "Vault token account PDA - per pool config",
+        "Seeds: [\"vault\", pool_config]"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            118,
+            97,
+            117,
+            108,
+            116
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "pool_config"
+        }
+      ]
+    }
+  ]
+}

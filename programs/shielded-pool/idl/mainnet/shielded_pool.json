@@ -1,0 +1,4178 @@
+{
+  "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z",
+  "metadata": {
+    "name": "shielded_pool",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Pinocchio implementation of shielded pool protocol"
+  },
+  "instructions": [
+    {
+      "name": "init_transact_session",
+      "docs": [
+        "Initialize a transact session account for chunked proof upload.",
+        "Creates a temporary account to store proof data across multiple transactions."
+      ],
+      "discriminator": [
+        0
+      ],
+      "accounts": [
+        {
+          "name": "transact_session",
+          "docs": [
+            "Transact session PDA to create [\"transact_session\", authority, nonce] Raw AccountInfo since we're creating this account via CPI"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority (payer) for the session"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "docs": [
+            "Unique nonce for this session"
+          ],
+          "type": "u64"
+        },
+        {
+          "name": "data_len",
+          "docs": [
+            "Total size of transaction data to be uploaded"
+          ],
+          "type": "u32"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              4
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "upload_transact_chunk",
+      "docs": [
+        "Upload a chunk of transaction data to the session account.",
+        "Proof data is uploaded in chunks due to transaction size limits."
+      ],
+      "discriminator": [
+        1
+      ],
+      "accounts": [
+        {
+          "name": "transact_session",
+          "docs": [
+            "Transact session PDA"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority (must match session creator)"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "execute_transact",
+      "docs": [
+        "Execute shielded transaction using uploaded proof data.",
+        "Verifies the ZK proof, updates merkle trees, and transfers tokens.",
+        "Uses wrapper accounts struct for panchor compatibility."
+      ],
+      "discriminator": [
+        2
+      ],
+      "accounts": [
+        {
+          "name": "transact_session",
+          "docs": [
+            "Transact session PDA containing proof data"
+          ],
+          "writable": true
+        },
+        {
+          "name": "commitment_tree",
+          "docs": [
+            "Commitment merkle tree PDA"
+          ],
+          "writable": true
+        },
+        {
+          "name": "receipt_tree",
+          "docs": [
+            "Receipt merkle tree PDA"
+          ],
+          "writable": true
+        },
+        {
+          "name": "nullifier_indexed_tree",
+          "docs": [
+            "Nullifier indexed merkle tree PDA"
+          ],
+          "writable": true
+        },
+        {
+          "name": "epoch_root_pda",
+          "docs": [
+            "Epoch root PDA for historical nullifier roots (optional, pass system_program if unused) Uses raw AccountInfo since this account is optional - callers pass the system program as a placeholder when not using historical roots. Owner validation is performed manually in the handler when the account is actually used."
+          ]
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global pool configuration"
+          ]
+        },
+        {
+          "name": "nullifier_0",
+          "docs": [
+            "Nullifier PDA 0 (initialized during execution) Uses raw AccountInfo since nullifier accounts are created/initialized during transaction execution. Owner validation happens after account creation."
+          ],
+          "writable": true
+        },
+        {
+          "name": "nullifier_1",
+          "docs": [
+            "Nullifier PDA 1 (initialized during execution)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "nullifier_2",
+          "docs": [
+            "Nullifier PDA 2 (initialized during execution)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "nullifier_3",
+          "docs": [
+            "Nullifier PDA 3 (initialized during execution)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "relayer",
+          "docs": [
+            "Relayer account (conditional signer for relayed transactions)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Rent payer (signer)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program account (required for self-CPI event emission)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "unique_reward_config_count",
+          "docs": [
+            "Count of unique reward asset_ids to load (max 8).",
+            "Each loads 2 accounts: pool_config + pool-specific config."
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "slot_pool_type",
+          "docs": [
+            "Pool type for each public slot (N_PUBLIC_LINES = 2).",
+            "Uses [`SlotPoolType`] discriminant values (0=None, 1=Token, 2=UnifiedSol).",
+            "Determines account count per slot: None=0, Token=9, UnifiedSol=10."
+          ],
+          "type": {
+            "array": [
+              "u8",
+              2
+            ]
+          }
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment."
+          ],
+          "type": {
+            "array": [
+              "u8",
+              5
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "close_transact_session",
+      "docs": [
+        "Close a transact session account and reclaim rent."
+      ],
+      "discriminator": [
+        3
+      ],
+      "accounts": [
+        {
+          "name": "transact_session",
+          "docs": [
+            "Transact session PDA to close [\"transact_session\", authority, nonce]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority (must match session creator) or anyone after expiry"
+          ],
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "poseidon_hash",
+      "docs": [
+        "Compute Poseidon hash (utility instruction for testing/verification)."
+      ],
+      "discriminator": [
+        32
+      ],
+      "accounts": [
+        {
+          "name": "placeholder",
+          "docs": [
+            "Placeholder account (poseidon_hash needs no accounts, this is for type safety) In practice, callers can pass any account here."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "input",
+          "docs": [
+            "32-byte input to hash"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "log",
+      "docs": [
+        "Log event data via CPI self-invocation.",
+        "Used internally to emit structured events."
+      ],
+      "discriminator": [
+        33
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Authority PDA that must be owned by this program"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "test_groth16",
+      "docs": [
+        "Test Groth16 proof verification (utility instruction).",
+        "Verifies a proof against the nullifier batch insertion VK (batch size 4).",
+        "Useful for testing that Groth16 verification works correctly on-chain."
+      ],
+      "discriminator": [
+        34
+      ],
+      "accounts": [
+        {
+          "name": "placeholder",
+          "docs": [
+            "Placeholder account (test_groth16 needs no accounts, this is for type safety) In practice, callers can pass any account here."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "proof_a",
+          "docs": [
+            "Compressed G1 point for proof element A (32 bytes, big-endian)"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof_b",
+          "docs": [
+            "Compressed G2 point for proof element B (64 bytes, big-endian)"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proof_c",
+          "docs": [
+            "Compressed G1 point for proof element C (32 bytes, big-endian)"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "public_inputs",
+          "docs": [
+            "Public inputs for the circuit (7 x 32-byte field elements, big-endian)"
+          ],
+          "type": {
+            "array": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "advance_nullifier_epoch",
+      "docs": [
+        "Advance the nullifier tree epoch for batch finalization."
+      ],
+      "discriminator": [
+        65
+      ],
+      "accounts": [
+        {
+          "name": "nullifier_tree",
+          "docs": [
+            "The indexed tree account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "nullifier_epoch_root",
+          "docs": [
+            "The NullifierEpochRoot PDA to create [\"nullifier_epoch_root\", nullifier_epoch] Raw AccountInfo since we must skip validation for accounts being created"
+          ],
+          "writable": true
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA for event signing"
+          ]
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Pays for the new account"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_inserted_nullifier",
+      "docs": [
+        "Close a nullifier PDA after insertion is finalized."
+      ],
+      "discriminator": [
+        66
+      ],
+      "accounts": [
+        {
+          "name": "nullifier_tree",
+          "docs": [
+            "The indexed tree account (for epoch checks)"
+          ]
+        },
+        {
+          "name": "nullifier_pda",
+          "docs": [
+            "The nullifier account to close"
+          ],
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Where to send reclaimed rent"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Signer for authorization. During grace period: must match Nullifier.authority After grace period: can be anyone (permissionless GC)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA for event signing"
+          ]
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "nullifier_batch_insert",
+      "docs": [
+        "Insert a batch of nullifiers using a ZK proof."
+      ],
+      "discriminator": [
+        68
+      ],
+      "accounts": [
+        {
+          "name": "nullifier_tree",
+          "docs": [
+            "The indexed tree account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA for event signing"
+          ]
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "advance_earliest_provable_epoch",
+      "docs": [
+        "Advance the earliest provable epoch to prune old roots."
+      ],
+      "discriminator": [
+        69
+      ],
+      "accounts": [
+        {
+          "name": "nullifier_tree",
+          "docs": [
+            "The indexed tree account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA for authority verification and event signing"
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must be global config authority"
+          ],
+          "signer": true
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "new_earliest_epoch",
+          "docs": [
+            "The new earliest provable epoch value"
+          ],
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "close_nullifier_epoch_root",
+      "docs": [
+        "Close a NullifierEpochRoot PDA after nullifier epoch is no longer provable."
+      ],
+      "discriminator": [
+        70
+      ],
+      "accounts": [
+        {
+          "name": "nullifier_tree",
+          "docs": [
+            "The indexed tree account (for earliest_provable_epoch check)"
+          ]
+        },
+        {
+          "name": "nullifier_epoch_root_pda",
+          "docs": [
+            "The nullifier epoch root account to close"
+          ],
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Where to send reclaimed rent"
+          ],
+          "writable": true
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA for authority verification and event signing"
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must be global config authority"
+          ],
+          "signer": true
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_deposit_escrow",
+      "docs": [
+        "Initialize a deposit escrow for relayer-assisted deposits.",
+        "Creates escrow account, vault ATA, and transfers tokens from depositor."
+      ],
+      "discriminator": [
+        128
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "docs": [
+            "Depositor (payer) for the escrow. Must be a signer and will transfer tokens to the escrow vault."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow",
+          "docs": [
+            "Escrow PDA to create [\"deposit_escrow\", depositor, nonce] Raw AccountInfo since we're creating this account via CPI."
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_vault_authority",
+          "docs": [
+            "Escrow vault authority PDA [\"escrow_vault_authority\", escrow] This PDA will own the escrow vault and sign transfers out."
+          ]
+        },
+        {
+          "name": "escrow_vault",
+          "docs": [
+            "Escrow vault - ATA of escrow_vault_authority for the mint. Created if it doesn't exist."
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositor_token_account",
+          "docs": [
+            "Depositor's token account (source of tokens)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "SPL token mint for this escrow."
+          ]
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof_hash",
+          "docs": [
+            "SHA256 hash of the session_body that this escrow is bound to."
+          ],
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "docs": [
+            "Unique nonce for this escrow."
+          ],
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "docs": [
+            "Amount of tokens to transfer to escrow vault."
+          ],
+          "type": "u64"
+        },
+        {
+          "name": "authorized_relayer",
+          "docs": [
+            "Authorized relayer pubkey, or [0;32] to allow any relayer."
+          ],
+          "type": "pubkey"
+        },
+        {
+          "name": "expiry_slots",
+          "docs": [
+            "Number of slots after creation when escrow expires.",
+            "User can reclaim tokens after expiry."
+          ],
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "close_deposit_escrow",
+      "docs": [
+        "Close a deposit escrow and reclaim tokens after expiry.",
+        "Returns tokens and rent to the original depositor."
+      ],
+      "discriminator": [
+        129
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "docs": [
+            "Depositor (original escrow creator). Must be a signer and will receive rent and tokens back."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow",
+          "docs": [
+            "Escrow PDA to close [\"deposit_escrow\", depositor, nonce]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_vault_authority",
+          "docs": [
+            "Escrow vault authority PDA [\"escrow_vault_authority\", escrow] Signs transfers and close instructions."
+          ]
+        },
+        {
+          "name": "escrow_vault",
+          "docs": [
+            "Escrow vault ATA to close."
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositor_token_account",
+          "docs": [
+            "Depositor's token account (receives reclaimed tokens)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "docs": [
+            "Escrow nonce (used to derive the PDA)."
+          ],
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Initialize a new shielded pool with merkle tree and global config."
+      ],
+      "discriminator": [
+        192
+      ],
+      "accounts": [
+        {
+          "name": "commitment_tree",
+          "docs": [
+            "Commitment tree PDA [\"commitment_tree\"], created by this instruction"
+          ],
+          "writable": true
+        },
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"], created by this instruction"
+          ],
+          "writable": true
+        },
+        {
+          "name": "receipt_tree",
+          "docs": [
+            "Receipt tree PDA [\"receipt_tree\"], created by this instruction"
+          ],
+          "writable": true
+        },
+        {
+          "name": "nullifier_tree",
+          "docs": [
+            "Nullifier tree PDA [\"nullifier_tree\"], created by this instruction"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Payer and future pool authority"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_pool_paused",
+      "docs": [
+        "Set the paused state for the pool."
+      ],
+      "discriminator": [
+        193
+      ],
+      "accounts": [
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match global_config.authority"
+          ],
+          "signer": true
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "is_paused",
+          "docs": [
+            "New paused state (1 = paused, 0 = active)"
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "register_token_pool",
+      "docs": [
+        "Register a token pool with the hub.",
+        "Creates PoolConfigAccount linking to an existing TokenPoolConfig."
+      ],
+      "discriminator": [
+        194
+      ],
+      "accounts": [
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"]"
+          ]
+        },
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA to create [\"pool_config\", asset_id] Raw AccountInfo since we're creating this account via CPI"
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_pool_config",
+          "docs": [
+            "TokenPoolConfig account from the token-pool program. Must be owned by TOKEN_POOL_PROGRAM_ID."
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match global_config.authority (signer and payer)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_unified_sol_pool",
+      "docs": [
+        "Register the unified SOL pool with the hub.",
+        "Creates PoolConfigAccount linking to an existing UnifiedSolPoolConfig."
+      ],
+      "discriminator": [
+        195
+      ],
+      "accounts": [
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"]"
+          ]
+        },
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA to create [\"pool_config\", asset_id] Raw AccountInfo since we're creating this account via CPI"
+          ],
+          "writable": true
+        },
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig account from the unified-sol-pool program. Must be owned by UNIFIED_SOL_POOL_PROGRAM_ID."
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match global_config.authority (signer and payer)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_pool_config_active",
+      "docs": [
+        "Set the active state for a pool config.",
+        "Enables or disables pool routing for an asset."
+      ],
+      "discriminator": [
+        196
+      ],
+      "accounts": [
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"]"
+          ]
+        },
+        {
+          "name": "pool_config",
+          "docs": [
+            "Pool config PDA [\"pool_config\", asset_id]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match global_config.authority"
+          ],
+          "signer": true
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": [
+        {
+          "name": "is_active",
+          "docs": [
+            "New active state (1 = active, 0 = inactive)"
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "transfer_authority",
+      "docs": [
+        "Initiate two-step authority transfer by setting pending_authority.",
+        "The new authority must call AcceptAuthority to complete."
+      ],
+      "discriminator": [
+        197
+      ],
+      "accounts": [
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Current authority (must be signer, must match global_config.authority)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "new_authority",
+          "docs": [
+            "New authority address (read-only)"
+          ]
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "accept_authority",
+      "docs": [
+        "Complete two-step authority transfer by accepting pending authority role.",
+        "Must be called by the pending_authority address."
+      ],
+      "discriminator": [
+        198
+      ],
+      "accounts": [
+        {
+          "name": "global_config",
+          "docs": [
+            "Global config PDA [\"global_config\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "Pending authority (must be signer, must match global_config.pending_authority)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "shielded_pool_program",
+          "docs": [
+            "Shielded pool program (for event emission via self-CPI)"
+          ],
+          "address": "zrbus1K97oD9wzzygehPBZMh5EVXPturZNgbfoTig5Z"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GlobalConfig",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "CommitmentMerkleTree",
+      "discriminator": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "ReceiptMerkleTree",
+      "discriminator": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Nullifier",
+      "discriminator": [
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "TransactSession",
+      "discriminator": [
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierIndexedTree",
+      "discriminator": [
+        10,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierEpochRoot",
+      "discriminator": [
+        12,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "PoolConfig",
+      "discriminator": [
+        15,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "DepositEscrow",
+      "discriminator": [
+        16,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "NewNullifierEvent",
+      "discriminator": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierBatchInsertedEvent",
+      "discriminator": [
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierEpochAdvancedEvent",
+      "discriminator": [
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierEarliestEpochAdvancedEvent",
+      "discriminator": [
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierLeafInsertedEvent",
+      "discriminator": [
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierPdaClosedEvent",
+      "discriminator": [
+        9,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "NullifierEpochRootClosedEvent",
+      "discriminator": [
+        10,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "DepositEscrowCreatedEvent",
+      "discriminator": [
+        16,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "DepositEscrowClosedEvent",
+      "discriminator": [
+        17,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "PoolRegisteredEvent",
+      "discriminator": [
+        48,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AuthorityTransferInitiatedEvent",
+      "discriminator": [
+        49,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AuthorityTransferCompletedEvent",
+      "discriminator": [
+        50,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "PoolPauseChangedEvent",
+      "discriminator": [
+        51,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "PoolConfigActiveChangedEvent",
+      "discriminator": [
+        52,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "PoolInitializedEvent",
+      "discriminator": [
+        53,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "AuthorityTransferCompletedEvent",
+      "docs": [
+        "Event emitted when an authority transfer is completed.",
+        "This event is emitted after a successful `accept_authority` instruction,",
+        "which transfers the authority role from the previous authority to the",
+        "new authority who accepted.",
+        "# Security Considerations",
+        "This is a security-critical event that should be monitored for:",
+        "- Confirmation of legitimate authority transfers",
+        "- Unauthorized authority changes",
+        "- Governance compliance tracking",
+        "# Usage by Indexers",
+        "1. Update authority tracking records",
+        "2. Clear pending transfer state",
+        "3. Alert on authority change completion",
+        "4. Audit trail for governance changes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_authority",
+            "docs": [
+              "Authority who initiated and relinquished control."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "docs": [
+              "Authority who accepted and now controls protocol."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot when transfer was completed."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityTransferInitiatedEvent",
+      "docs": [
+        "Event emitted when an authority transfer is initiated.",
+        "This event is emitted after a successful `transfer_authority` instruction,",
+        "which sets the `pending_authority` field on the global config. The transfer",
+        "is not complete until `accept_authority` is called by the pending authority.",
+        "# Security Considerations",
+        "This is a security-critical event that should be monitored for:",
+        "- Unauthorized transfer attempts",
+        "- Unusual transfer patterns",
+        "- Monitoring for timely acceptance (or lack thereof)",
+        "# Usage by Indexers",
+        "1. Track pending authority transfers",
+        "2. Alert on authority transfer initiation",
+        "3. Monitor for acceptance timeout (if applicable)",
+        "4. Audit trail for governance changes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current_authority",
+            "docs": [
+              "Current authority initiating the transfer."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "New authority who must accept."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot when transfer was initiated."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommitmentMerkleTree",
+      "docs": [
+        "Commitment merkle tree account for storing the commitment tree state.",
+        "This is a standard append-only merkle tree (not an indexed tree). Unlike the",
+        "nullifier tree, it has no genesis sentinel leaf, so `next_index` starts at 0.",
+        "# Index Semantics",
+        "- `next_index = 0` after initialization (empty tree)",
+        "- First commitment inserted goes to index 0",
+        "- Capacity is `2^height` = 67,108,864 commitments",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][struct data]`"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_index",
+            "docs": [
+              "Next index for insertion. Starts at 0 (no genesis leaf in standard merkle trees)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "root_index",
+            "docs": [
+              "Index into root_history (circular buffer cursor)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "height",
+            "docs": [
+              "Tree height (constant after init)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "root_history_size",
+            "docs": [
+              "Size of root history circular buffer"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "root",
+            "docs": [
+              "Current root of the tree"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "subtrees",
+            "docs": [
+              "Subtree hashes for incremental merkle tree"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                26
+              ]
+            }
+          },
+          {
+            "name": "root_history",
+            "docs": [
+              "History of past roots for proof verification"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositEscrow",
+      "docs": [
+        "Deposit escrow account for relayer-assisted deposits.",
+        "This account holds tokens deposited by a user, bound to a specific proof hash.",
+        "A relayer can consume the escrow when executing the matching transact proof.",
+        "# Account Layout",
+        "`[8-byte discriminator][struct fields]`",
+        "# PDA Seeds",
+        "`[\"deposit_escrow\", depositor, nonce]`"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof_hash",
+            "docs": [
+              "SHA256 hash of the session_body that this escrow is bound to.",
+              "Must match `SHA256(session.body)` when consuming the escrow.",
+              "This binds the escrow to the exact proof parameters the user authorized."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "The SPL token mint for this escrow's vault.",
+              "Used to derive the escrow vault ATA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "authorized_relayer",
+            "docs": [
+              "Authorized relayer pubkey, or [0;32] to allow any relayer.",
+              "If non-zero, only this relayer can consume the escrow."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "expiry_slot",
+            "docs": [
+              "Slot after which the depositor can reclaim the escrow.",
+              "Calculated as: created_slot + expiry_slots"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Unique nonce for this escrow (part of PDA derivation).",
+              "Allows a depositor to have multiple concurrent escrows."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "consumed",
+            "docs": [
+              "Whether this escrow has been consumed by a transact.",
+              "Set to 1 (true) after successful escrow deposit execution, 0 (false) otherwise.",
+              "Using u8 instead of bool for bytemuck::Pod compatibility."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for this escrow account."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 8-byte alignment."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositEscrowClosedEvent",
+      "docs": [
+        "Event emitted when a deposit escrow is closed.",
+        "This event is emitted after a successful `close_deposit_escrow` instruction,",
+        "which transfers tokens back to the depositor and closes the escrow account.",
+        "# Closure Conditions",
+        "A deposit escrow can be closed when:",
+        "- The escrow has expired (current slot > expiry_slot)",
+        "- The escrow has not been consumed by a transact execution",
+        "# Usage by Indexers",
+        "1. Remove escrow from active tracking",
+        "2. Track escrow cancellation rate",
+        "3. Calculate returned token volume",
+        "4. Audit trail for escrow lifecycle"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "depositor",
+            "docs": [
+              "User who closed the escrow (original depositor)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow",
+            "docs": [
+              "Escrow PDA address."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_returned",
+            "docs": [
+              "Amount of tokens returned to depositor."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Escrow nonce (for correlation with creation event)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lamports_reclaimed",
+            "docs": [
+              "Rent lamports reclaimed."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositEscrowCreatedEvent",
+      "docs": [
+        "Event emitted when a deposit escrow is created.",
+        "This event is emitted after a successful `init_deposit_escrow` instruction,",
+        "which creates an escrow account and transfers tokens to a vault for",
+        "relayer-assisted deposits.",
+        "# Usage by Indexers",
+        "1. Track pending deposit escrows",
+        "2. Monitor escrow expiry for user notifications",
+        "3. Match escrows to transact executions",
+        "4. Calculate deposit volume metrics"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "depositor",
+            "docs": [
+              "User who created the escrow."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow",
+            "docs": [
+              "Escrow PDA address."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint of escrowed tokens."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "proof_hash",
+            "docs": [
+              "SHA256 of transact session (binds escrow to proof)."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "authorized_relayer",
+            "docs": [
+              "Authorized relayer (zero = any relayer allowed)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "expiry_slot",
+            "docs": [
+              "Slot after which depositor can reclaim tokens."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Escrow nonce (for multiple concurrent escrows)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens escrowed."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalConfig",
+      "docs": [
+        "Global configuration singleton for the shielded pool.",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][72-byte struct data]`",
+        "Total on-chain size: 80 bytes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that controls the pool"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "Pending authority for two-step transfer.",
+              "Set by `transfer_authority`, must call `accept_authority` to complete."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "is_paused",
+            "docs": [
+              "Whether the pool is paused (0 = active, 1 = paused)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NewNullifierEvent",
+      "docs": [
+        "Event emitted when a new nullifier is created (input note spent).",
+        "Nullifiers prevent double-spending by marking notes as consumed.",
+        "Each nullifier is a hash of the note's secret parameters that can only",
+        "be computed by the note owner.",
+        "The `pending_index` indicates the position this nullifier will occupy",
+        "in the indexed merkle tree once batch insertion occurs. Clients use this",
+        "to maintain a local sorted linked list of nullifiers for generating",
+        "non-membership proofs."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier",
+            "docs": [
+              "The nullifier hash (32 bytes, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pending_index",
+            "docs": [
+              "The assigned pending index in the indexed tree.",
+              "This is the index that will be used when the nullifier is batch-inserted",
+              "into the indexed merkle tree. Clients should track this to maintain their",
+              "local state for proof generation."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Nullifier",
+      "docs": [
+        "Nullifier account for tracking spent notes.",
+        "Each nullifier PDA represents a spent note and gets a sequential `pending_index`",
+        "assigned from `NullifierIndexedTree.next_pending_index`. This index determines",
+        "the order in which nullifiers are inserted into the indexed tree via NullifierBatchInsert.",
+        "# Index Semantics",
+        "The `pending_index` starts at 1 (not 0) because index 0 is reserved for the",
+        "genesis sentinel leaf in the indexed merkle tree. The first real nullifier",
+        "created by `ExecuteTransact` receives `pending_index = 1`.",
+        "# Lifecycle",
+        "1. **Created** by `ExecuteTransact`: `pending_index` assigned, `inserted_epoch = 0`",
+        "2. **Inserted** by `NullifierBatchInsert`: `inserted_epoch` set to current epoch",
+        "3. **Closable** when `inserted_epoch < earliest_provable_epoch`",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][56-byte struct data]`",
+        "Total on-chain size: 64 bytes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that created this nullifier (typically the commitment tree PDA)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_index",
+            "docs": [
+              "Sequential index for ordered tree insertion.",
+              "Assigned from `NullifierIndexedTree.next_pending_index` during `ExecuteTransact`.",
+              "Starts at 1 because index 0 is reserved for the genesis sentinel leaf."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "inserted_epoch",
+            "docs": [
+              "Epoch when this nullifier was inserted into the indexed tree.",
+              "- `0` means \"not yet inserted\" (pending)",
+              "- Values >= 1 indicate the actual epoch when inserted",
+              "Note: Epochs start at 1 (not 0) so that 0 can be the uninitialized sentinel.",
+              "Used to verify the nullifier has been frozen in all provable epoch roots before closure."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierBatchInsertHeader",
+      "docs": [
+        "Fixed header portion of NullifierBatchInsert instruction data.",
+        "This Pod struct represents the fixed-size portion for zero-copy access.",
+        "Variable-length nullifiers follow immediately after.",
+        "## Wire Format",
+        "| Offset | Size | Field |",
+        "|--------|------|-------|",
+        "| 0 | 1 | batch_size: u8 |",
+        "| 1 | 1024 | proof: NullifierBatchInsertProof |",
+        "| 1025 | 32 * batch_size | nullifiers: [[u8; 32]] |"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_size",
+            "docs": [
+              "Number of nullifiers to insert (1-64)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "proof",
+            "docs": [
+              "The ZK proof and new tree state"
+            ],
+            "type": {
+              "defined": {
+                "name": "NullifierBatchInsertProof"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierBatchInsertProof",
+      "docs": [
+        "Groth16 proof for batch nullifier insertion into the indexed merkle tree.",
+        "This proof verifies that a batch of nullifiers can be correctly inserted:",
+        "- Each nullifier satisfies ordering: low_value < nullifier < low_next_value",
+        "- Low element merkle proofs are valid (for IN_TREE low elements)",
+        "- Low element updates are correct (pointers updated to new nullifier)",
+        "- New leaf appends are correct (inherits low's old pointers)",
+        "- Final root matches after all insertions",
+        "Public inputs (verified in circuit):",
+        "- old_root: Tree root before insertions",
+        "- new_root: Tree root after all insertions",
+        "- nullifiers[N]: The nullifier values to insert",
+        "- starting_index: First insertion index (tree.next_index)",
+        "Private inputs (in circuit):",
+        "- For each nullifier: low element data + merkle proof + type (IN_TREE/PENDING)",
+        "- initial_subtrees: Subtree siblings for incremental append"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof_a",
+            "docs": [
+              "Groth16 proof element A (G1 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_b",
+            "docs": [
+              "Groth16 proof element B (G2 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "proof_c",
+            "docs": [
+              "Groth16 proof element C (G1 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "old_root",
+            "docs": [
+              "Tree root before insertions (must match tree.root)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_root",
+            "docs": [
+              "Tree root after all insertions (will become tree.root)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_subtrees",
+            "docs": [
+              "Updated subtree siblings after all insertions",
+              "These are copied directly to tree.subtrees"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                26
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierBatchInsertedEvent",
+      "docs": [
+        "Event emitted when nullifiers are batch inserted into the indexed merkle tree.",
+        "This event is emitted after a successful `nullifier_batch_insert` instruction,",
+        "which verifies a ZK proof that the batch insertion is valid. The event enables",
+        "indexers to verify their simulated tree state matches the on-chain state.",
+        "# Usage by Indexers",
+        "1. Match nullifiers by `pending_index` range: `[starting_index, starting_index + batch_size)`",
+        "2. Verify simulated `new_root` matches the event's `new_root`",
+        "3. Update `inserted_epoch` on matched nullifiers for garbage collection tracking"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_root",
+            "docs": [
+              "Tree root before insertions"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_root",
+            "docs": [
+              "Tree root after all insertions"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "starting_index",
+            "docs": [
+              "First tree index in this batch"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "inserted_epoch",
+            "docs": [
+              "Epoch when inserted"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "batch_size",
+            "docs": [
+              "Number of nullifiers inserted (1-64)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 8-byte alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierEarliestEpochAdvancedEvent",
+      "docs": [
+        "Event emitted when the nullifier tree's earliest provable epoch is advanced.",
+        "This event is emitted after a successful `advance_earliest_provable_epoch` instruction,",
+        "which updates the minimum epoch for which nullifier non-membership proofs are accepted.",
+        "This enables garbage collection of old epoch root accounts and nullifier PDAs.",
+        "# Usage by Indexers",
+        "1. Nullifiers with `inserted_epoch < new_epoch` can be garbage collected",
+        "2. Epoch root accounts with `epoch < new_epoch` can be closed",
+        "3. Track the provable window: `[new_epoch, current_epoch]`"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_epoch",
+            "docs": [
+              "Previous earliest provable epoch"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "new_epoch",
+            "docs": [
+              "New earliest provable epoch"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierEpochAdvancedEvent",
+      "docs": [
+        "Event emitted when the nullifier epoch is advanced.",
+        "This event is emitted after a successful `advance_nullifier_epoch` instruction,",
+        "which creates a `NullifierEpochRoot` PDA storing a snapshot of the tree root at this epoch.",
+        "The nullifier epoch root is used for generating and verifying non-membership proofs.",
+        "# Usage by Indexers",
+        "1. Record the nullifier epoch root snapshot for proof verification",
+        "2. Track `finalized_index` to know which nullifiers are included in this epoch",
+        "3. Use for garbage collection: nullifiers with `pending_index < finalized_index`",
+        "can be considered finalized"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier_epoch",
+            "docs": [
+              "The nullifier epoch that was finalized"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "root",
+            "docs": [
+              "The tree root at this nullifier epoch"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalized_index",
+            "docs": [
+              "Last tree index included in this nullifier epoch"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierEpochRoot",
+      "docs": [
+        "Stores a finalized nullifier tree root for a specific epoch.",
+        "Created by `AdvanceNullifierEpoch` when finalizing an epoch boundary.",
+        "Can be closed via `CloseNullifierEpochRoot` after the epoch is no longer provable.",
+        "# PDA Seeds",
+        "`[\"nullifier_epoch_root\", nullifier_epoch.to_le_bytes()]`",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][56-byte struct data]`",
+        "Total on-chain size: 64 bytes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "docs": [
+              "Finalized merkle root at epoch boundary"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nullifier_epoch",
+            "docs": [
+              "Nullifier epoch number this root corresponds to"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "finalized_index",
+            "docs": [
+              "Tree index at finalization (last_finalized_index)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment to 8 bytes"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierEpochRootClosedEvent",
+      "docs": [
+        "Event emitted when a nullifier epoch root PDA is closed and rent reclaimed.",
+        "This event provides an audit trail for nullifier epoch cleanup operations,",
+        "enabling indexers to track which epochs have been garbage collected.",
+        "# Closure Conditions",
+        "A nullifier epoch root can be closed when:",
+        "- `nullifier_epoch < earliest_provable_epoch` (no longer needed for proof verification)",
+        "# Usage by Indexers",
+        "1. Remove nullifier epoch from provable history tracking",
+        "2. Update GC metrics (reclaimed lamports, epochs cleaned)",
+        "3. Verify no proofs will reference this epoch going forward"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier_epoch",
+            "docs": [
+              "The nullifier epoch number that was closed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reclaimed_lamports",
+            "docs": [
+              "Lamports reclaimed from the closed account"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierIndexedTree",
+      "docs": [
+        "Indexed merkle tree account for nullifier storage.",
+        "Key concepts:",
+        "- `root` is updated incrementally with each insertion",
+        "- Historical roots stored in EpochRootAccount PDAs (created by AdvanceNullifierEpoch)",
+        "- Non-membership proofs verify against EpochRootAccount PDAs or current root",
+        "- `next_index` tracks inserted leaves, `next_pending_index` tracks assigned PDAs",
+        "- `earliest_provable_epoch` determines which epochs are valid for proofs",
+        "# Genesis Leaf and Index Semantics",
+        "The tree is initialized with a **genesis leaf** at index 0. This sentinel leaf",
+        "`(value=0, next_value=0, next_index=0)` anchors the sorted linked list structure.",
+        "Per Aztec spec, `next_value=0` represents infinity (end of list).",
+        "As a result, both `next_index` and `next_pending_index` start at **1** after",
+        "initialization, not 0. Real nullifiers occupy indices 1 through `2^height - 1`,",
+        "giving a capacity of `2^height - 1` nullifiers (67,108,863 for height 26).",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][struct data]`",
+        "Field ordering is for proper alignment (u64 fields first, then [u8; 32], then u8)."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "next_index",
+            "docs": [
+              "Next tree leaf index for insertions.",
+              "Starts at 1 after initialization (index 0 is the genesis sentinel leaf).",
+              "Incremented when nullifiers are actually inserted into the tree via NullifierBatchInsert."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "next_pending_index",
+            "docs": [
+              "Next pending index to assign to new nullifier PDAs.",
+              "Starts at 1 after initialization (index 0 is reserved for genesis).",
+              "Incremented when ExecuteTransact creates new nullifier PDAs.",
+              "Invariant: `next_index <= next_pending_index`"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "current_epoch",
+            "docs": [
+              "Current epoch number"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "earliest_provable_epoch",
+            "docs": [
+              "Oldest epoch that is valid for ZK proof verification.",
+              "Epochs older than this can have their EpochRootAccount PDAs closed.",
+              "Updated via AdvanceEarliestProvableEpoch instruction."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_finalized_index",
+            "docs": [
+              "Last tree index included in the most recent epoch root"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_epoch_slot",
+            "docs": [
+              "Slot when the last epoch was advanced.",
+              "Used to enforce MIN_SLOTS_PER_EPOCH between epoch advances when pending nullifiers exist."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "Authority (global config authority)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "root",
+            "docs": [
+              "Current root (updated on each insertion)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "subtrees",
+            "docs": [
+              "Subtrees for incremental merkle updates (sibling hashes on the path)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                26
+              ]
+            }
+          },
+          {
+            "name": "height",
+            "docs": [
+              "Tree height (26)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment to 8 bytes"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierLeafInsertedEvent",
+      "docs": [
+        "Event emitted for each nullifier inserted during ZK batch insertion.",
+        "This event records the nullifier value, its tree position, and the epoch",
+        "when it was inserted. Indexers can reconstruct the full indexed merkle",
+        "tree structure by:",
+        "1. Collecting all (nullifier, tree_index) pairs",
+        "2. Sorting nullifiers by value",
+        "3. Computing linked list pointers from the sorted order",
+        "The `inserted_epoch` field enables:",
+        "- Lifecycle tracking for nullifier PDA garbage collection",
+        "- Epoch-based queries for incremental sync",
+        "- Correlation with `NullifierBatchInsertedEvent` for verification"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier",
+            "docs": [
+              "The nullifier value (32 bytes, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "tree_index",
+            "docs": [
+              "Tree index where this leaf was inserted"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "inserted_epoch",
+            "docs": [
+              "Epoch when this nullifier was inserted into the indexed tree"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierNonMembershipMerkleProof",
+      "docs": [
+        "On-chain merkle non-membership proof data (alternative to ZK proof).",
+        "Used when ZK proof is not available or for testing.",
+        "This struct contains the low element data and merkle proof needed to",
+        "verify non-membership on-chain without a ZK proof."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "low_index",
+            "docs": [
+              "Index of the low element in the tree"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "low_value",
+            "docs": [
+              "Value of the low element (the largest value < nullifier)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "low_next_value",
+            "docs": [
+              "Next value of the low element (the smallest value > nullifier)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "low_next_index",
+            "docs": [
+              "Next index of the low element"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "merkle_proof",
+            "docs": [
+              "Merkle proof for the low element (26 hashes for tree height 26)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                26
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierNonMembershipProofData",
+      "docs": [
+        "Groth16 proof for nullifier non-membership in the indexed merkle tree.",
+        "This proof verifies that all N_INS nullifiers are NOT present in the",
+        "nullifier indexed merkle tree (past epochs). Current epoch nullifiers",
+        "are checked via PDA existence.",
+        "Public inputs (verified in circuit):",
+        "- nullifier_root: Root of the nullifier indexed merkle tree",
+        "- nullifiers: The N_INS nullifier hashes (must match transact proof)",
+        "Private inputs (in circuit):",
+        "- For each nullifier: low element data + merkle proof",
+        "The circuit proves for each nullifier:",
+        "1. low_value < nullifier < low_next_value (ordering/non-membership)",
+        "2. Merkle proof of low element inclusion at nullifier_root"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof_a",
+            "docs": [
+              "Groth16 proof element A (G1 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_b",
+            "docs": [
+              "Groth16 proof element B (G2 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "proof_c",
+            "docs": [
+              "Groth16 proof element C (G1 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nullifier_root",
+            "docs": [
+              "Root of the nullifier indexed merkle tree (big-endian)",
+              "Must be a known root (current or in root_history)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierPdaClosedEvent",
+      "docs": [
+        "Event emitted when a nullifier PDA is closed and rent reclaimed.",
+        "This event provides an audit trail for garbage collection operations,",
+        "enabling indexers to track which nullifiers have been cleaned up.",
+        "# Closure Conditions",
+        "A nullifier can be closed when either:",
+        "1. `inserted_epoch < earliest_provable_epoch` (no longer needed for proofs)",
+        "2. Grace period expired and authority initiates closure",
+        "# Usage by Indexers",
+        "1. Match `nullifier_pda` with tracked nullifier accounts",
+        "2. Remove nullifier from active tracking",
+        "3. Update GC metrics (reclaimed lamports, closure rate)",
+        "4. Verify closure was authorized (check epoch conditions)",
+        "Note: The nullifier hash is not included because it cannot be recovered",
+        "from the PDA alone. Indexers should correlate via the PDA address which",
+        "they tracked from the original `NewNullifierEvent`."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier_pda",
+            "docs": [
+              "The nullifier PDA that was closed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "inserted_epoch",
+            "docs": [
+              "The epoch when this nullifier was inserted into the indexed tree"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reclaimed_lamports",
+            "docs": [
+              "Lamports reclaimed from the closed account"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolConfig",
+      "docs": [
+        "Hub's PoolConfig account for routing pool operations.",
+        "This is a PDA owned by the hub program that maps an asset_id to a pool",
+        "program. The hub uses this to:",
+        "1. Determine which pool program to CPI to",
+        "2. Validate that pool program accounts are owned by the expected program",
+        "3. Route deposits/withdrawals to the correct pool",
+        "# PDA Seeds",
+        "`[\"pool_config\", asset_id]`",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][72-byte struct data]`",
+        "Total on-chain size: 80 bytes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_program",
+            "docs": [
+              "Pool program ID to CPI to (and expected owner of pool config accounts)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_id",
+            "docs": [
+              "Asset ID for matching proof.public_asset_ids"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pool_type",
+            "docs": [
+              "Pool type (0 = Token, 1 = UnifiedSol)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether the pool is active (0 = inactive, 1 = active)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                5
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolConfigActiveChangedEvent",
+      "docs": [
+        "Event emitted when a pool config's active state is changed.",
+        "This event is emitted after a successful `set_pool_config_active` instruction,",
+        "which enables or disables pool routing for a specific asset.",
+        "# Usage by Indexers",
+        "1. Track pool config state changes",
+        "2. Update asset routing availability",
+        "3. Alert on asset enable/disable",
+        "4. Audit trail for asset management"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority who changed the state."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_id",
+            "docs": [
+              "Asset ID affected."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "New state: 1 = enabled, 0 = disabled."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 8-byte alignment."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolInitializedEvent",
+      "docs": [
+        "Event emitted when the shielded pool is initialized.",
+        "This event is emitted after a successful `initialize` instruction,",
+        "which creates the four core PDAs (commitment tree, receipt tree,",
+        "nullifier tree, and global config).",
+        "# Historical Record",
+        "This event provides a genesis record for the protocol, enabling:",
+        "- Protocol start timestamp tracking",
+        "- Initial authority identification",
+        "- Core PDA address discovery",
+        "# Usage by Indexers",
+        "1. Record protocol genesis block/slot",
+        "2. Track initial authority",
+        "3. Store core PDA addresses for reference",
+        "4. Initialize indexer state from genesis"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Initial protocol authority."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "commitment_tree",
+            "docs": [
+              "Commitment merkle tree PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "receipt_tree",
+            "docs": [
+              "Receipt merkle tree PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "nullifier_tree",
+            "docs": [
+              "Nullifier indexed tree PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "global_config",
+            "docs": [
+              "Global config PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Genesis slot."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolPauseChangedEvent",
+      "docs": [
+        "Event emitted when the pool's paused state is changed.",
+        "This event is emitted after a successful `set_pool_paused` instruction,",
+        "which enables or disables all pool operations. The event is emitted for",
+        "both pausing AND unpausing - check `is_paused` field for the new state.",
+        "# Security Considerations",
+        "This is a security-critical event that should be monitored for:",
+        "- Emergency pause activations",
+        "- Unexpected pause state changes",
+        "- Protocol availability tracking",
+        "# Usage by Indexers",
+        "1. Track pool operational status",
+        "2. Alert on pause state changes",
+        "3. Calculate pool downtime metrics",
+        "4. Audit trail for operational changes"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority who changed the state."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "is_paused",
+            "docs": [
+              "New state: 1 = paused, 0 = active."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 8-byte alignment."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot when state changed."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolRegisteredEvent",
+      "docs": [
+        "Event emitted when a pool is registered with the hub.",
+        "This event is emitted after a successful `register_token_pool` or",
+        "`register_unified_sol_pool` instruction, which creates a `PoolConfig`",
+        "account linking the hub to a pool program.",
+        "# Usage by Indexers",
+        "1. Track which pools are registered with the hub",
+        "2. Map asset_ids to their corresponding pool programs",
+        "3. Monitor pool registration activity for analytics"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_type",
+            "docs": [
+              "The pool type (0 = Token, 1 = UnifiedSol)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          },
+          {
+            "name": "asset_id",
+            "docs": [
+              "The asset ID for this pool"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pool_program",
+            "docs": [
+              "The pool program ID"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReceiptMerkleTree",
+      "docs": [
+        "Simple append-only receipt merkle tree account.",
+        "No history tracking needed - just stores the current root and subtrees.",
+        "This is a standard append-only merkle tree (not an indexed tree). Unlike the",
+        "nullifier tree, it has no genesis sentinel leaf, so `next_index` starts at 0.",
+        "# Index Semantics",
+        "- `next_index = 0` after initialization (empty tree)",
+        "- First receipt inserted goes to index 0",
+        "- Capacity is `2^height` receipts",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][struct data]`"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that can manage this tree"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "next_index",
+            "docs": [
+              "Next index for insertion (also represents total receipts).",
+              "Starts at 0 (no genesis leaf in standard merkle trees)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "root",
+            "docs": [
+              "Current root of the tree"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "height",
+            "docs": [
+              "Tree height"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "subtrees",
+            "docs": [
+              "Subtree hashes for incremental merkle tree"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                26
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactParams",
+      "docs": [
+        "Bounded parameters for shielded transactions.",
+        "Pod-compatible for zero-copy deserialization from session data.",
+        "These parameters are cryptographically bound by the ZK proof's transact_params_hash.",
+        "The proof signs over the hash of these parameters, preventing modification.",
+        "All fields are included in the transact_params_hash to prevent relayer malleability.",
+        "Note: Uses Pubkey type which is `[u8; 32]` in pinocchio, making this Pod-compatible.",
+        "WARNING: Field order is fixed for binary compatibility (repr(C) Pod struct).",
+        "Do not reorder fields without updating all serialization code (Rust + TypeScript).",
+        "TODO: Symmetric wallet + token account fields for both relayer and recipients",
+        "──────────────────────────────────────────────────────────────────────────────",
+        "Currently:",
+        "- relayer: wallet address only (token account derived as canonical ATA)",
+        "- recipients: token account addresses only (owner not hash-bound)",
+        "Planned change (requires circuit update):",
+        "- relayer: Pubkey              → relayer wallet address",
+        "- relayer_token_accounts: [Pubkey; N_PUBLIC_LINES] → relayer token accounts per asset",
+        "- recipient_owners: [Pubkey; N_PUBLIC_LINES]       → recipient wallet addresses",
+        "- recipient_token_accounts: [Pubkey; N_PUBLIC_LINES] → recipient token accounts",
+        "This provides:",
+        "1. Both identity (wallet) AND destination (token account) hash-bound to proof",
+        "2. Symmetric validation for relayer and recipients",
+        "3. Defense-in-depth: validate token_account.owner == wallet at execution time",
+        "──────────────────────────────────────────────────────────────────────────────"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_ids",
+            "docs": [
+              "Poseidon hash of mint per public line.",
+              "Must match proof's public_asset_ids. Prevents relayer from substituting different assets."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                2
+              ]
+            }
+          },
+          {
+            "name": "mints",
+            "docs": [
+              "Token mint addresses per public line.",
+              "Program verifies Poseidon(mint) == asset_id."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                2
+              ]
+            }
+          },
+          {
+            "name": "ext_amounts",
+            "docs": [
+              "Net external amount change per public line:",
+              "- Positive: deposit amount (tokens flowing into the pool)",
+              "- Negative: withdrawal amount (tokens flowing out of the pool, net to recipient)",
+              "- Zero: unused slot or pure shielded transfer"
+            ],
+            "type": {
+              "array": [
+                "i64",
+                2
+              ]
+            }
+          },
+          {
+            "name": "fees",
+            "docs": [
+              "Protocol fee in token base units per public line.",
+              "Fee is charged on |ext_amount| (what crosses the boundary)."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
+          },
+          {
+            "name": "recipients",
+            "docs": [
+              "Recipient SPL token account addresses for withdrawals per public line.",
+              "The token account receives |ext_amount| - relayer_fee for that asset.",
+              "For deposits or pure transfers, this should be ZERO_PUBKEY.",
+              "Note: Unlike relayer (where we derive token account from wallet via ATA),",
+              "recipients are specified as token account addresses directly, giving the",
+              "prover flexibility to withdraw to any valid token account."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                2
+              ]
+            }
+          },
+          {
+            "name": "relayer_fees",
+            "docs": [
+              "Fee paid to relayer per public line in token base units.",
+              "Derived from ext_amount: user_receives = |ext_amount| - relayer_fee."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
+          },
+          {
+            "name": "relayer",
+            "docs": [
+              "Relayer wallet address that submits the transaction.",
+              "Receives relayer_fees for their service."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "slot_expiry",
+            "docs": [
+              "Slot expiry for this transaction.",
+              "Transaction will fail if current slot > slot_expiry.",
+              "Set to 0 to disable expiry check."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "encrypted_output_hashes",
+            "docs": [
+              "SHA256 hashes of encrypted output ciphertexts.",
+              "Binds encrypted outputs to the proof, preventing relayer malleability.",
+              "Program verifies SHA256(encrypted_outputs[i]) == encrypted_output_hashes[i]."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                4
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactProofData",
+      "docs": [
+        "Zero-knowledge proof for shielded transactions.",
+        "Public inputs must match the circuit's public signals.",
+        "This struct is Pod-compatible for zero-copy deserialization from account data.",
+        "The memory layout matches Borsh serialization (all fixed-size arrays, no length prefixes).",
+        "All fields are big-endian."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof_a",
+            "docs": [
+              "Groth16 proof element A (G1 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_b",
+            "docs": [
+              "Groth16 proof element B (G2 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "proof_c",
+            "docs": [
+              "Groth16 proof element C (G1 point, big-endian)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commitment_root",
+            "docs": [
+              "Commitment merkle tree root (big-endian)",
+              "Circuit: commitmentRoot"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "transact_params_hash",
+            "docs": [
+              "Hash of transact params (big-endian)",
+              "Circuit: transactParamsHash"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "public_asset_ids",
+            "docs": [
+              "Asset IDs for public flow (big-endian)",
+              "Zero values indicate unused slots",
+              "Circuit: publicAssetId[nPublicLines]"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                2
+              ]
+            }
+          },
+          {
+            "name": "public_amounts",
+            "docs": [
+              "Net change per asset (big-endian, signed)",
+              "Positive=deposit, negative=withdraw, zero=unused",
+              "Note: Differs from ext_amount in TransactParams:",
+              "- ext_amount = gross amount (fee charged on this)",
+              "- public_amounts = pool boundary crossing:",
+              "Deposits: net (after deposit fee)",
+              "Withdrawals: gross (before withdrawal fee)",
+              "Circuit: publicAmount[nPublicLines]"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                2
+              ]
+            }
+          },
+          {
+            "name": "nullifiers",
+            "docs": [
+              "Nullifiers for spent notes (big-endian)",
+              "Circuit: nullifiers[nInputNotes]"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "commitments",
+            "docs": [
+              "Commitments for newly created notes (big-endian)",
+              "Circuit: commitments[nOutputNotes]"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "reward_acc",
+            "docs": [
+              "Global reward accumulator per reward line (big-endian)",
+              "Circuit: rewardAcc[nRewardLines]"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                8
+              ]
+            }
+          },
+          {
+            "name": "reward_asset_id",
+            "docs": [
+              "Asset ID per reward line (big-endian)",
+              "Circuit: rewardAssetId[nRewardLines]"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactSession",
+      "docs": [
+        "Transact session account for splitting transact into multiple transactions.",
+        "This account stores raw transaction data uploaded in chunks.",
+        "The setup phase creates the account and uploads data in pieces.",
+        "The execute phase deserializes and validates all data, then executes.",
+        "After execution, the session should be closed via `close_transact_session`.",
+        "Re-execution is prevented by closing the account (reclaiming rent).",
+        "# Account Layout (on-chain)",
+        "`[8-byte discriminator][56-byte struct][variable-length data]`",
+        "Seeds: [\"transact_session\", authority, nonce]"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that created this session (can upload chunks and close)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Nonce for multiple concurrent sessions"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "created_slot",
+            "docs": [
+              "Slot when this session was created (for expiry tracking)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "data_len",
+            "docs": [
+              "Total expected data length (not including header)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                3
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "pdas": [
+    {
+      "name": "CommitmentTree",
+      "docs": [
+        "Commitment merkle tree singleton"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            99,
+            111,
+            109,
+            109,
+            105,
+            116,
+            109,
+            101,
+            110,
+            116,
+            95,
+            116,
+            114,
+            101,
+            101
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DepositEscrow",
+      "docs": [
+        "Deposit escrow PDA - per depositor, per nonce",
+        "Holds deposited tokens bound to a specific proof hash for relayer-assisted deposits."
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            100,
+            101,
+            112,
+            111,
+            115,
+            105,
+            116,
+            95,
+            101,
+            115,
+            99,
+            114,
+            111,
+            119
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "depositor"
+        },
+        {
+          "kind": "account",
+          "path": "nonce"
+        }
+      ]
+    },
+    {
+      "name": "EscrowVaultAuthority",
+      "docs": [
+        "Escrow vault authority PDA - per escrow",
+        "Authority for the escrow's token vault ATA. Used to sign transfers",
+        "from the escrow vault during execute_transact."
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            101,
+            115,
+            99,
+            114,
+            111,
+            119,
+            95,
+            118,
+            97,
+            117,
+            108,
+            116,
+            95,
+            97,
+            117,
+            116,
+            104,
+            111,
+            114,
+            105,
+            116,
+            121
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "escrow"
+        }
+      ]
+    },
+    {
+      "name": "GlobalConfig",
+      "docs": [
+        "Global config singleton"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            103,
+            108,
+            111,
+            98,
+            97,
+            108,
+            95,
+            99,
+            111,
+            110,
+            102,
+            105,
+            103
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HubAuthority",
+      "docs": [
+        "Hub authority singleton - delegate for pool vault withdrawals",
+        "Used in the delegation model where pools approve this PDA as delegate",
+        "for vault transfers, allowing the hub to execute all token movements."
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            104,
+            117,
+            98,
+            95,
+            97,
+            117,
+            116,
+            104,
+            111,
+            114,
+            105,
+            116,
+            121
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nullifier",
+      "docs": [
+        "Nullifier PDA - per nullifier value"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            110,
+            117,
+            108,
+            108,
+            105,
+            102,
+            105,
+            101,
+            114
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "nullifier"
+        }
+      ]
+    },
+    {
+      "name": "NullifierEpochRoot",
+      "docs": [
+        "Nullifier epoch root PDA - per nullifier epoch number"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            110,
+            117,
+            108,
+            108,
+            105,
+            102,
+            105,
+            101,
+            114,
+            95,
+            101,
+            112,
+            111,
+            99,
+            104,
+            95,
+            114,
+            111,
+            111,
+            116
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "nullifier_epoch"
+        }
+      ]
+    },
+    {
+      "name": "NullifierTree",
+      "docs": [
+        "Nullifier indexed tree singleton"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            110,
+            117,
+            108,
+            108,
+            105,
+            102,
+            105,
+            101,
+            114,
+            95,
+            116,
+            114,
+            101,
+            101
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PoolConfig",
+      "docs": [
+        "Pool config PDA - per asset_id",
+        "Hub's routing configuration that maps asset_ids to pool programs."
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            112,
+            111,
+            111,
+            108,
+            95,
+            99,
+            111,
+            110,
+            102,
+            105,
+            103
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "asset_id"
+        }
+      ]
+    },
+    {
+      "name": "ReceiptTree",
+      "docs": [
+        "Receipt merkle tree singleton"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            114,
+            101,
+            99,
+            101,
+            105,
+            112,
+            116,
+            95,
+            116,
+            114,
+            101,
+            101
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TransactSession",
+      "docs": [
+        "Transact session PDA - per user, per nonce"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            116,
+            114,
+            97,
+            110,
+            115,
+            97,
+            99,
+            116,
+            95,
+            115,
+            101,
+            115,
+            115,
+            105,
+            111,
+            110
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "authority"
+        },
+        {
+          "kind": "account",
+          "path": "nonce"
+        }
+      ]
+    }
+  ]
+}

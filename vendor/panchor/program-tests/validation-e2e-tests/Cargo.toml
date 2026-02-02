@@ -1,0 +1,16 @@
+[package]
+name = "validation-e2e-tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+litesvm = "0.8.2"
+solana-sdk = "~3.0"
+solana-program = "~3.0"
+solana-system-interface = "~3.0"
+bytemuck.workspace = true
+anyhow = "1.0"
+
+[lints]
+workspace = true

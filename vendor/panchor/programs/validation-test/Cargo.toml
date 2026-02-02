@@ -1,0 +1,29 @@
+[package]
+name = "validation-test-program"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Test program for panchor account validation"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "validation_test"
+
+[features]
+default = []
+no-entrypoint = []
+solana-sdk = ["dep:solana-sdk", "no-entrypoint"]
+idl-build = ["panchor/idl-build", "dep:serde_json"]
+
+[dependencies]
+bytemuck = { workspace = true, features = ["derive"] }
+num_enum.workspace = true
+panchor = { path = "../../crates/panchor" }
+pinocchio.workspace = true
+pinocchio-system.workspace = true
+pinocchio-token.workspace = true
+serde_json = { workspace = true, optional = true }
+solana-sdk = { workspace = true, optional = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,21 @@
+# Build artifacts
+target/
+*.so
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Deploy keypairs (never commit these!)
+*-keypair.json
+deploy/*.json
+!deploy/*-template.json

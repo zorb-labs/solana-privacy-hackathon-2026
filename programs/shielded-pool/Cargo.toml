@@ -1,0 +1,100 @@
+[package]
+name = "shielded-pool"
+version = "0.1.0"
+edition = "2024"
+description = "Pinocchio implementation of shielded pool protocol"
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["mainnet"]
+# Note: localnet uses mainnet addresses for local development
+mainnet = ["zorb-program-ids/mainnet", "token-pool/mainnet", "unified-sol-pool/mainnet", "zorb-pool-interface/mainnet"]
+localnet = ["zorb-program-ids/localnet", "token-pool/localnet", "unified-sol-pool/localnet", "zorb-pool-interface/localnet"]
+devnet = ["zorb-program-ids/devnet", "token-pool/devnet", "unified-sol-pool/devnet", "zorb-pool-interface/devnet"]
+test-mode = []
+idl-build = ["dep:panchor-idl", "panchor/idl-build", "dep:serde_json"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+
+[dependencies]
+pinocchio = { version = "0.9.2", default-features = false }
+pinocchio-pubkey = { version = "0.3.0" }
+bytemuck = { version = "1.20.0", features = ["derive", "min_const_generics"] }
+light-poseidon = "0.3.0"
+light-hasher = "5.0.0"
+num-bigint = "0.4.4"
+ark-bn254 = { version = "0.5.0", features = [] }
+ark-ff = { version = "0.5.0", features = [] }
+ark-serialize = { version = "0.5.0", features = [] }
+solana-bn254 = "3.1.2"
+solana-program = "3.0.0"
+borsh = "1.6.0"
+pinocchio-log = "0.5.1"
+pinocchio-token = "0.4.0"
+pinocchio-system = "0.3.0"
+pinocchio-associated-token-account = "0.2.0"
+solana-poseidon = "3.0.0"
+sha2-const-stable = "0.1"
+#solana-keypair = "3.0"
+
+# Panchor framework
+panchor = { workspace = true }
+panchor-idl = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+num_enum = { workspace = true }
+const-crypto = { workspace = true }
+strum = { workspace = true }
+pinocchio-contrib = { workspace = true }
+
+# Centralized program IDs
+zorb-program-ids = { workspace = true }
+
+# Pool plugin interface for CPI
+zorb-pool-interface = { path = "../../crates/zorb-pool-interface" }
+
+# Pool programs (for account type references)
+# Use no-entrypoint to avoid global allocator conflicts when building BPF
+token-pool = { path = "../token-pool", features = ["no-entrypoint"] }
+unified-sol-pool = { path = "../unified-sol-pool", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+litesvm = "0.8.2"
+five8_const = "0.1"
+test-case = "3.1.0"
+sha2 = "0.10"
+hex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Pinocchio types (for Pod struct construction in tests)
+pinocchio = { workspace = true }
+# Solana 3.x types for litesvm 0.8.2 compatibility
+solana-signer = "3.0"
+solana-pubkey = "3.0"
+solana-hash = "3.0"
+solana-transaction = "3.0"
+solana-instruction = "3.0"
+solana-system-interface = { version = "3.0", features = ["bincode"] }
+solana-rent = "3.0"
+solana-account = "3.0"
+spl-token = "8.0"
+solana-keypair = "3.0"
+
+# Pool programs are in [dependencies] for account type references
+
+# Integration test targets (disabled for IDL generation - paths no longer exist)
+# [[test]]
+# name = "token_config_integration"
+# path = "tests/token_config/integration_test.rs"
+
+# [[test]]
+# name = "unified_sol_integration"
+# path = "tests/unified_sol/integration_test.rs"
+
+# [[test]]
+# name = "transact_integration"
+# path = "tests/transact/integration_test.rs"

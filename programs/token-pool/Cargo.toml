@@ -1,0 +1,64 @@
+[package]
+name = "token-pool"
+version.workspace = true
+edition = "2024"
+license.workspace = true
+repository.workspace = true
+description = "Token pool program for Zorb privacy system - handles SPL token deposits and withdrawals"
+
+[features]
+default = ["mainnet"]
+# Enable BPF target for on-chain deployment
+bpf = []
+# Disable entrypoint when used as a library dependency
+no-entrypoint = []
+# Enable test utilities
+test-utils = []
+# Enable IDL generation
+idl-build = ["dep:panchor-idl", "panchor/idl-build", "dep:serde_json"]
+# Network-specific builds
+# Note: localnet uses mainnet addresses for local development
+mainnet = ["zorb-program-ids/mainnet", "zorb-pool-interface/mainnet"]
+devnet = ["zorb-program-ids/devnet", "zorb-pool-interface/devnet"]
+localnet = ["zorb-program-ids/localnet", "zorb-pool-interface/localnet"]
+
+[dependencies]
+bytemuck = { version = "1.14", features = ["derive"] }
+pinocchio = { version = "0.9.2", default-features = false }
+pinocchio-token = "0.4.0"
+pinocchio-system = "0.3.0"
+zorb-pool-interface = { path = "../../crates/zorb-pool-interface" }
+
+# Panchor framework
+panchor = { workspace = true }
+panchor-idl = { workspace = true, optional = true }
+pinocchio-contrib = { workspace = true }
+pinocchio-log = "0.5.1"
+num_enum = { workspace = true }
+serde_json = { workspace = true, optional = true }
+strum = { workspace = true }
+
+# Poseidon hashing for asset_id computation
+solana-poseidon = "3.0.0"
+
+# Centralized program IDs
+zorb-program-ids = { workspace = true }
+
+[dev-dependencies]
+litesvm = "0.8.2"
+litesvm-token = "0.8.1"
+borsh = "1.6.0"
+bytemuck = { version = "1.14", features = ["derive"] }
+solana-signer = "3.0"
+solana-pubkey = "3.0"
+solana-transaction = "3.0"
+solana-instruction = "3.0"
+solana-system-interface = { version = "3.0", features = ["bincode"] }
+solana-account = "3.0"
+solana-keypair = "3.0"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

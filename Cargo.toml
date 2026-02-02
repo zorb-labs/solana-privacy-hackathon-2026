@@ -1,0 +1,50 @@
+[workspace]
+resolver = "2"
+members = [
+    "programs/shielded-pool",
+    "programs/token-pool",
+    "programs/unified-sol-pool",
+    "crates/zorb-program-ids",
+    "crates/zorb-pool-interface",
+]
+# Note: CLI (programs/shielded-pool/cli) is a standalone workspace
+# Build it separately: cd programs/shielded-pool/cli && cargo build
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/zorb-labs/solana-privacy-hackathon-2026"
+version = "0.1.0"
+
+[workspace.dependencies]
+# External crates
+bytemuck = { version = "1.14.3", features = ["derive"] }
+serde = "1.0"
+serde_json = "1.0"
+num_enum = "0.7.2"
+const-crypto = "0.1.0"
+strum = { version = "0.26", features = ["derive"] }
+
+# Pinocchio crates
+pinocchio = "0.9.2"
+pinocchio-log = "0.5.1"
+pinocchio-pubkey = "0.3.0"
+pinocchio-system = "0.4.0"
+pinocchio-token = "0.4.0"
+pinocchio-test-utils = { path = "vendor/panchor/crates/pinocchio-test-utils" }
+
+# Panchor framework (local workspace)
+panchor = { path = "vendor/panchor/crates/panchor" }
+panchor-idl = { path = "vendor/panchor/crates/panchor-idl" }
+pinocchio-contrib = { path = "vendor/panchor/crates/pinocchio-contrib" }
+
+# Zorb internal crates
+zorb-program-ids = { path = "crates/zorb-program-ids" }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unused_crate_dependencies = "warn"
+
+[workspace.lints.clippy]
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"

@@ -1,0 +1,17 @@
+[package]
+name = "panchor-numeric"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+idl-build = ["panchor-idl/serde"]
+
+[dependencies]
+bytemuck = { workspace = true, features = ["derive"] }
+panchor = { path = "../panchor" }
+panchor-idl = { path = "../panchor-idl", optional = true }
+
+[lints]
+workspace = true

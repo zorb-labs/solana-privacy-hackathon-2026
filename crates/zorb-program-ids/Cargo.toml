@@ -1,0 +1,19 @@
+[package]
+name = "zorb-program-ids"
+description = "Single source of truth for all Zorb protocol program IDs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["mainnet"]
+mainnet = []
+devnet = []
+localnet = []
+
+[dependencies]
+# No dependencies - just const strings
+
+[lints]
+workspace = true

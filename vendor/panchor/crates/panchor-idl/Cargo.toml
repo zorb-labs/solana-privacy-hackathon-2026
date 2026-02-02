@@ -1,0 +1,17 @@
+[package]
+name = "panchor-idl"
+version = "0.1.0"
+edition = "2024"
+description = "IDL types for Panchor-based Solana programs"
+
+[features]
+default = []
+# Enable serde serialization/deserialization
+serde = ["dep:serde", "dep:serde_json"]
+# Enable IDL building (includes serde for JSON output)
+idl-build = ["serde"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+anchor-lang-idl-spec = "0.1"

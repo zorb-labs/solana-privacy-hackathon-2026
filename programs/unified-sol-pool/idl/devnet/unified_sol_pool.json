@@ -1,0 +1,1797 @@
+{
+  "address": "5RvgA1AKJSp9dgWMStgU7ud7WJvDEVx1ybU3du9BUCya",
+  "metadata": {
+    "name": "unified_sol_pool",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Unified SOL pool program for Zorb privacy system - handles LST deposits and withdrawals with exchange rate conversion"
+  },
+  "instructions": [
+    {
+      "name": "deposit",
+      "docs": [
+        "Process a deposit: transfer LST tokens from depositor to vault.",
+        "# Accounts",
+        "See `DepositAccounts` for the required accounts."
+      ],
+      "discriminator": [
+        0
+      ],
+      "accounts": [
+        {
+          "name": "unified_config",
+          "docs": [
+            "Unified SOL pool config account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "lst_config",
+          "docs": [
+            "LST config account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault token account (writable for receiving tokens) PDA derived from: [\"lst_vault\", lst_config]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositor_token",
+          "docs": [
+            "Depositor's token account (writable for transfer)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositor",
+          "docs": [
+            "Depositor authority (signer for transfer)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "unified_sol_program",
+          "docs": [
+            "Unified SOL pool program account (required for self-CPI event emission)"
+          ],
+          "address": "5RvgA1AKJSp9dgWMStgU7ud7WJvDEVx1ybU3du9BUCya"
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program (required for Transfer CPI)"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Process a withdrawal: transfer LST tokens from vault to recipient.",
+        "# Accounts",
+        "See `WithdrawAccounts` for the required accounts."
+      ],
+      "discriminator": [
+        1
+      ],
+      "accounts": [
+        {
+          "name": "unified_config",
+          "docs": [
+            "Unified SOL pool config account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "lst_config",
+          "docs": [
+            "LST config account (PDA signer for vault)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault token account (source for transfer) PDA derived from: [\"lst_vault\", lst_config]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "hub_authority",
+          "docs": [
+            "Hub authority PDA (delegate for vault transfers)"
+          ]
+        },
+        {
+          "name": "unified_sol_program",
+          "docs": [
+            "Unified SOL pool program account (required for self-CPI event emission)"
+          ],
+          "address": "5RvgA1AKJSp9dgWMStgU7ud7WJvDEVx1ybU3du9BUCya"
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "init_unified_sol_pool_config",
+      "docs": [
+        "Initialize the unified SOL pool configuration.",
+        "Creates the UnifiedSolPoolConfig PDA."
+      ],
+      "discriminator": [
+        64
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA to create [\"unified_sol_pool\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority for this pool (becomes pool authority, pays for account creation)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "max_deposit_amount",
+          "docs": [
+            "Maximum tokens allowed per deposit transaction (0 = no limit)"
+          ],
+          "type": "u64"
+        },
+        {
+          "name": "deposit_fee_rate",
+          "docs": [
+            "Deposit fee in basis points (e.g., 100 = 1%)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "withdrawal_fee_rate",
+          "docs": [
+            "Withdrawal fee in basis points (e.g., 100 = 1%)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "min_buffer_bps",
+          "docs": [
+            "Minimum WSOL buffer as basis points (e.g., 2000 = 20%)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              2
+            ]
+          }
+        },
+        {
+          "name": "min_buffer_amount",
+          "docs": [
+            "Minimum absolute WSOL buffer in lamports"
+          ],
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_lst_config",
+      "docs": [
+        "Initialize a new LST configuration.",
+        "Creates an LstConfig PDA and its associated vault."
+      ],
+      "discriminator": [
+        65
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA (for authority check and lst_count update) PDA derived from: [\"unified_sol_pool\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "lst_config",
+          "docs": [
+            "LstConfig PDA to create [\"lst_config\", lst_mint]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "lst_mint",
+          "docs": [
+            "LST mint account (e.g., vSOL, jitoSOL)"
+          ]
+        },
+        {
+          "name": "lst_vault",
+          "docs": [
+            "LST vault PDA to create [\"lst_vault\", lst_config] Note: Manually created as token account (owned by token program, not pool program)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "stake_pool",
+          "docs": [
+            "The stake pool for this LST (for WSOL, can be any account)"
+          ]
+        },
+        {
+          "name": "stake_pool_program",
+          "docs": [
+            "The program that owns the stake pool"
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match unified_sol_config.authority (pays for account creation)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "SPL Token program (required for CPI, validated to match lst_mint.owner())"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_type",
+          "docs": [
+            "Pool type (0=Wsol, 1=SplStakePool, 2=Marinade, 3=Lido)"
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_unified_sol_pool_config_active",
+      "docs": [
+        "Set the active state for the unified SOL pool config."
+      ],
+      "discriminator": [
+        66
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match unified_sol_pool_config.authority"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "is_active",
+          "docs": [
+            "New active state (1 = active/enabled, 0 = inactive/disabled)"
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_lst_config_active",
+      "docs": [
+        "Set the active state for an LST config."
+      ],
+      "discriminator": [
+        67
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA (for authority check)"
+          ]
+        },
+        {
+          "name": "lst_config",
+          "docs": [
+            "LstConfig PDA to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match unified_sol_pool_config.authority"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "is_active",
+          "docs": [
+            "New active state (1 = active/enabled, 0 = inactive/disabled)"
+          ],
+          "type": "u8"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              7
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_unified_sol_pool_config_fee_rates",
+      "docs": [
+        "Set the fee rates for the unified SOL pool config."
+      ],
+      "discriminator": [
+        68
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Must match unified_sol_pool_config.authority"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "deposit_fee_rate",
+          "docs": [
+            "New deposit fee rate in basis points (max 10000)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "withdrawal_fee_rate",
+          "docs": [
+            "New withdrawal fee rate in basis points (max 10000)"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "_padding",
+          "docs": [
+            "Padding for 8-byte alignment"
+          ],
+          "type": {
+            "array": [
+              "u8",
+              4
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize_unified_rewards",
+      "docs": [
+        "Finalize unified SOL rewards by updating the reward accumulator.",
+        "Permissionless - anyone can call after UPDATE_SLOT_INTERVAL has passed.",
+        "Freezes exchange rates atomically with accumulator update."
+      ],
+      "discriminator": [
+        69
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA"
+          ],
+          "writable": true
+        },
+        {
+          "name": "unified_sol_program",
+          "docs": [
+            "Unified SOL pool program account (required for self-CPI event emission)"
+          ],
+          "address": "5RvgA1AKJSp9dgWMStgU7ud7WJvDEVx1ybU3du9BUCya"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "harvest_lst_appreciation",
+      "docs": [
+        "Harvest LST appreciation for a specific LST.",
+        "Permissionless. Updates exchange rate and adds appreciation to pending rewards."
+      ],
+      "discriminator": [
+        70
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "UnifiedSolPoolConfig PDA"
+          ],
+          "writable": true
+        },
+        {
+          "name": "lst_config",
+          "docs": [
+            "LstConfig PDA for the LST being harvested"
+          ],
+          "writable": true
+        },
+        {
+          "name": "rate_data_account",
+          "docs": [
+            "Rate data account: stake pool (for SPL pools) or lst_vault (for WSOL)"
+          ]
+        },
+        {
+          "name": "unified_sol_program",
+          "docs": [
+            "Unified SOL pool program account (required for self-CPI event emission)"
+          ],
+          "address": "5RvgA1AKJSp9dgWMStgU7ud7WJvDEVx1ybU3du9BUCya"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "log",
+      "docs": [
+        "Log an event via CPI (internal use only).",
+        "This instruction is invoked via CPI from within the program to emit events.",
+        "It validates the caller is the program itself via PDA signer."
+      ],
+      "discriminator": [
+        71
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Authority PDA that signed the CPI call. Must be owned by this program and signed via invoke_signed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "docs": [
+            "Raw instruction data bytes"
+          ],
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "transfer_authority",
+      "docs": [
+        "Initiate two-step authority transfer by setting pending_authority.",
+        "The new authority must call `accept_authority` to complete the transfer."
+      ],
+      "discriminator": [
+        192
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "Unified SOL pool config PDA [\"unified_sol_pool\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Current authority (must be signer, must match unified_sol_pool_config.authority)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "new_authority",
+          "docs": [
+            "New authority address (read-only)"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "accept_authority",
+      "docs": [
+        "Complete two-step authority transfer by accepting pending_authority role.",
+        "Must be called by the `pending_authority` address."
+      ],
+      "discriminator": [
+        193
+      ],
+      "accounts": [
+        {
+          "name": "unified_sol_pool_config",
+          "docs": [
+            "Unified SOL pool config PDA [\"unified_sol_pool\"]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "Pending authority (must be signer, must match unified_sol_pool_config.pending_authority)"
+          ],
+          "signer": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "UnifiedSolPoolConfig",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LstConfig",
+      "discriminator": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "UnifiedSolDepositEvent",
+      "discriminator": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "UnifiedSolWithdrawalEvent",
+      "discriminator": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "UnifiedSolRewardsFinalizedEvent",
+      "discriminator": [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AppreciationHarvestedEvent",
+      "discriminator": [
+        16,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "ExchangeRateUpdatedEvent",
+      "discriminator": [
+        17,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "AppreciationHarvestedEvent",
+      "docs": [
+        "Event emitted when LST appreciation is harvested."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lst_mint",
+            "docs": [
+              "LST mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "previous_rate",
+            "docs": [
+              "Previous exchange rate"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "new_rate",
+            "docs": [
+              "New exchange rate"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "appreciation_amount",
+            "docs": [
+              "Appreciation amount (in virtual SOL / lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "epoch",
+            "docs": [
+              "Epoch when harvested"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when harvested"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExchangeRateUpdatedEvent",
+      "docs": [
+        "Event emitted when exchange rate is updated."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lst_mint",
+            "docs": [
+              "LST mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "old_rate",
+            "docs": [
+              "Old exchange rate"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "new_rate",
+            "docs": [
+              "New exchange rate"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when updated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LstConfig",
+      "docs": [
+        "Per-LST configuration and state.",
+        "Seeds: [\"lst_config\", lst_mint]",
+        "# Overview",
+        "Each LstConfig tracks a single LST type within the unified SOL pool.",
+        "It manages exchange rate tracking and virtual SOL value calculation.",
+        "Note: UnifiedSolPoolConfig is a singleton, so it's not stored here. The relationship",
+        "is implicit - all LstConfigs belong to the single UnifiedSolPoolConfig.",
+        "# Exchange Rate",
+        "The exchange rate is stored as `1 LST = exchange_rate/1e9 SOL`.",
+        "For example:",
+        "- Rate of 1_050_000_000 means 1 vSOL = 1.05 SOL",
+        "- Rate of 980_000_000 means 1 LST = 0.98 SOL (discount)",
+        "# Balance Derivation",
+        "The LST balance is NOT stored in this account. It's always derived by reading",
+        "the `lst_vault` token account balance. This ensures consistency and avoids",
+        "the possibility of balance desync.",
+        "# Appreciation",
+        "When the exchange rate increases:",
+        "```text",
+        "old_value = vault_balance * old_rate / 1e9",
+        "new_value = vault_balance * new_rate / 1e9",
+        "appreciation = new_value - old_value",
+        "```",
+        "This appreciation is added to UnifiedSolPoolConfig.pending_rewards via harvest_lst_appreciation."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_type",
+            "docs": [
+              "Pool type discriminator (0 = Wsol, 1 = SplStakePool, 2 = Marinade, 3 = Lido)",
+              "FIRST field for instant pool type discrimination in variable decoders."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether this LST is enabled for operations (1 = active)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_header_pad",
+            "docs": [
+              "Padding for 8-byte alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                5
+              ]
+            }
+          },
+          {
+            "name": "lst_mint",
+            "docs": [
+              "LST token mint (e.g., WSOL, jitoSOL)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "lst_vault",
+            "docs": [
+              "PDA token account holding this LST",
+              "Seeds: [\"lst_vault\", lst_config]"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "exchange_rate",
+            "docs": [
+              "Current exchange rate: 1 LST = exchange_rate/1e9 SOL",
+              "For WSOL, always RATE_PRECISION (1:1)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "harvested_exchange_rate",
+            "docs": [
+              "Exchange rate used for deposits/withdrawals (frozen at finalize time).",
+              "Updated by `finalize_unified_rewards` to equal `exchange_rate` at that moment.",
+              "This \"freezes\" the rate so ZK proofs can use a consistent value.",
+              "# AUDIT: Dual Role as Economic Barrier",
+              "Between harvest and finalize, this rate is STALE (lower than `exchange_rate`).",
+              "This means depositors receive fewer virtual SOL than their tokens' market value.",
+              "This stale-rate cost is the natural economic barrier that prevents profitable",
+              "harvest-finalize timing attacks on the reward accumulator.",
+              "DO NOT update this field during harvest — it must only change at finalize",
+              "(atomically with the accumulator update) per INV-8."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_rate_update_slot",
+            "docs": [
+              "Slot when exchange rate was last updated"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_harvest_epoch",
+            "docs": [
+              "Reward epoch when this LST was last harvested.",
+              "# AUDIT: Epoch Model",
+              "**Initialization:** Starts at 0, meaning \"never harvested\".",
+              "**Updates:** `harvest_lst_appreciation` sets this to `reward_epoch`.",
+              "**Validation points:**",
+              "- `finalize_unified_rewards`: requires `last_harvest_epoch == reward_epoch`",
+              "- `execute_transact` (shielded-pool): requires `last_harvest_epoch == accumulator_epoch - 1`",
+              "**Why 0 means \"never harvested\"?** Since `reward_epoch` starts at 1, a newly",
+              "initialized LST with `last_harvest_epoch = 0` will fail the finalize check",
+              "(0 != 1) until it's actually harvested."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_pad_for_u128",
+            "docs": [
+              "Padding to align `total_virtual_sol` (u128) to 16-byte boundary."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_virtual_sol",
+            "docs": [
+              "Total virtual SOL value of this LST's vault.",
+              "**Units:** Lamports (1e9 per SOL)",
+              "**Formula:** `vault_token_balance × harvested_exchange_rate / RATE_PRECISION`",
+              "Updated incrementally during deposit/withdraw, recalculated atomically at finalize."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "vault_token_balance",
+            "docs": [
+              "Token balance counter for this LST's vault.",
+              "- **Deposit**: += token_amount",
+              "- **Withdraw**: -= output_tokens",
+              "- **Finalize**: used to calculate total_virtual_sol = counter × exchange_rate",
+              "Note: External transfers directly to vault are not tracked (free equity to pool)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_value_pad",
+            "docs": [
+              "Padding for u128 alignment"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_deposited",
+            "docs": [
+              "Total LST tokens deposited (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_withdrawn",
+            "docs": [
+              "Total LST tokens withdrawn (in token base units)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_appreciation_harvested",
+            "docs": [
+              "Total appreciation harvested from this LST (0 for WSOL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "docs": [
+              "Number of deposits into this LST"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "withdrawal_count",
+            "docs": [
+              "Number of withdrawals from this LST"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_stat_pad",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "stake_pool",
+            "docs": [
+              "Stake pool address for this LST (for rate queries)",
+              "Zeroed for WSOL."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_pool_program",
+            "docs": [
+              "Program ID for the stake pool",
+              "Zeroed for WSOL."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "previous_exchange_rate",
+            "docs": [
+              "Previous exchange rate (for appreciation calculation)",
+              "Zeroed for WSOL (no appreciation)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_reserved",
+            "docs": [
+              "Reserved for future use"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UnifiedSolDepositEvent",
+      "docs": [
+        "Event emitted when SOL/LST is deposited into the unified SOL pool."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lst_mint",
+            "docs": [
+              "LST mint address (or WSOL marker)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "lst_amount",
+            "docs": [
+              "LST tokens deposited (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "sol_value",
+            "docs": [
+              "SOL-equivalent value (in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "docs": [
+              "Protocol fee (in virtual SOL / lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "exchange_rate",
+            "docs": [
+              "Exchange rate used (1 LST = rate/1e9 SOL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when the deposit occurred"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 8-byte alignment"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UnifiedSolPoolConfig",
+      "docs": [
+        "Master configuration for unified SOL pool.",
+        "Seeds: [\"unified_sol_pool\"]",
+        "# Overview",
+        "This account enables users to deposit/withdraw any SOL-equivalent (WSOL, vSOL,",
+        "jitoSOL, etc.) while the protocol treats them as a single fungible asset.",
+        "The protocol manages rebalancing and converts LST appreciation into rewards.",
+        "# Asset ID",
+        "All SOL-equivalents share a single `asset_id = UNIFIED_SOL_ASSET_ID` in the circuit.",
+        "This is a protocol-defined constant (value 1), not derived from any mint.",
+        "This means users can deposit vSOL and later withdraw WSOL (subject to liquidity).",
+        "# Reward Accumulator Design",
+        "The accumulator tracks rewards per unit of virtual SOL. Rewards are finalized",
+        "every `UPDATE_SLOT_INTERVAL` slots (~5 minutes).",
+        "## State Fields",
+        "- `finalized_balance`: Balance frozen at last finalization. NOT modified between finalizations.",
+        "- `pending_deposits`: New deposits since last finalization (additive only).",
+        "- `pending_withdrawals`: Withdrawals since last finalization (additive only).",
+        "- `pending_deposit_fees`: Deposit fees collected since last finalization.",
+        "- `pending_withdrawal_fees`: Withdrawal fees collected since last finalization.",
+        "- `pending_appreciation`: LST appreciation collected since last finalization.",
+        "- `reward_accumulator`: Cumulative rewards per unit, scaled by 1e18.",
+        "## Key Properties",
+        "1. **Free deposits/withdrawals**: Between finalizations, deposits and withdrawals only",
+        "modify `pending_deposits` and `pending_withdrawals`. They never touch",
+        "`finalized_balance`, so underflow is impossible during transactions.",
+        "2. **Withdrawers receive rewards**: Since `finalized_balance` is frozen and includes",
+        "funds being withdrawn, withdrawers receive their proportional share of rewards.",
+        "3. **Single validation point**: The invariant `pending_withdrawals <= finalized_balance + pending_deposits`",
+        "is checked only at finalization, not during individual transactions.",
+        "## Finalization Flow",
+        "On `finalize_rewards(current_slot)`:",
+        "1. Check enough slots elapsed since `last_finalized_slot`",
+        "2. Calculate `total_pool = finalized_balance + pending_deposits - pending_withdrawals`",
+        "3. If rewards exist: `accumulator += (pending_rewards * 1e18) / total_pool`",
+        "4. Update: `finalized_balance = total_pool`",
+        "5. Reset: `pending_deposits = 0`, `pending_withdrawals = 0`, `pending_rewards = 0`",
+        "## Example",
+        "```text",
+        "After finalization: finalized_balance = 1000e9 (1000 virtual SOL)",
+        "User A deposits 500 vSOL:  pending_deposits = 500e9",
+        "User B withdraws 200:      pending_withdrawals = 200e9",
+        "LST appreciation + fees:   pending_rewards = 50e9",
+        "On finalize_rewards:",
+        "total_pool = 1000e9 + 500e9 - 200e9 = 1300e9",
+        "reward_delta = 50e9 * 1e18 / 1300e9 ≈ 38,461,538,461,538,461",
+        "finalized_balance = 1300e9",
+        "```",
+        "To compute a user's reward in circuit:",
+        "```text",
+        "user_reward = user_amount * (current_accumulator - entry_accumulator) / 1e18",
+        "```"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_id",
+            "docs": [
+              "The canonical asset ID - protocol-defined constant.",
+              "Value: [0x00...0x01] (the number 1 as big-endian 256-bit integer)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that can update config and perform admin operations"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "Pending authority for two-step transfer.",
+              "Set by `transfer_authority`, must call `accept_authority` to complete."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "reward_epoch",
+            "docs": [
+              "Current reward epoch. Increments on each `finalize_unified_rewards`.",
+              "# AUDIT: Epoch Model",
+              "**Initialization:** Starts at 1, not 0. Epoch 0 is reserved as \"uninitialized\".",
+              "**Lifecycle per epoch N:**",
+              "1. `harvest_lst_appreciation`: sets `LstConfig::last_harvest_epoch = N`",
+              "2. `finalize_unified_rewards`: validates all LSTs have `last_harvest_epoch == N`,",
+              "freezes `harvested_exchange_rate`, then increments `reward_epoch` to N+1",
+              "3. `execute_transact`: uses `accumulator_epoch = N+1`, checks",
+              "`last_harvest_epoch == N+1 - 1 == N`",
+              "**Why start at 1?** New LSTs have `last_harvest_epoch = 0`. If `reward_epoch`",
+              "also started at 0, the finalize check `last_harvest_epoch == reward_epoch`",
+              "would pass for unharvested LSTs (0 == 0), allowing dummy exchange rates.",
+              "See: `init_unified_sol_pool_config.rs` for initialization"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_reserved1",
+            "docs": [
+              "Reserved for future use (using u64 array since bytemuck doesn't support [u8; 56])"
+            ],
+            "type": {
+              "array": [
+                "u64",
+                7
+              ]
+            }
+          },
+          {
+            "name": "total_virtual_sol",
+            "docs": [
+              "Total virtual SOL value across all LST vaults.",
+              "**Units:** Lamports (1e9 per SOL)",
+              "**Formula:** Sum of `vault_balance × harvested_exchange_rate / RATE_PRECISION` for all LSTs",
+              "# Update Policy",
+              "Updated incrementally during:",
+              "- `deposit`: += virtual_sol (value of deposited tokens at harvested_exchange_rate)",
+              "- `withdraw`: -= net_virtual_sol (value of tokens leaving vault)",
+              "Recalibrated during:",
+              "- `finalize_unified_rewards`: set to `Σ(LstConfig.total_virtual_sol)`",
+              "# Important",
+              "This value tracks pool value at the `harvested_exchange_rate` (frozen rate).",
+              "It does NOT reflect real-time market value (which uses `exchange_rate`).",
+              "Used for:",
+              "- Buffer calculations (via `calculate_required_buffer()`)",
+              "- Informational/display purposes"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "reward_accumulator",
+            "docs": [
+              "Cumulative rewards per unit of deposit, scaled by 1e18.",
+              "**Units:** Scaled fixed-point (rewards * 1e18 / deposits)",
+              "**Updates on:** `finalize_rewards()` only",
+              "To compute user rewards in circuit:",
+              "`user_reward = user_amount * (current_acc - entry_acc) / 1e18`"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "last_finalized_slot",
+            "docs": [
+              "Slot when rewards were last finalized.",
+              "**Updates on:** `finalize_rewards()` only"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_deposit_fees",
+            "docs": [
+              "Pending deposit fees waiting to be distributed on next finalization.",
+              "**Units:** Virtual SOL (lamports, 1e9 per SOL)",
+              "**Important:** Fee rewards are denominated in virtual SOL, not LST tokens.",
+              "When a user pays a 1% fee on a 100 virtual SOL deposit, 1 virtual SOL",
+              "is added to `pending_deposit_fees`, regardless of the underlying LST type.",
+              "**Updates on:**",
+              "- Deposit fees: += fee_amount (virtual SOL)",
+              "- `finalize_rewards()`: reset to 0 after distribution"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_withdrawal_fees",
+            "docs": [
+              "Pending withdrawal fees waiting to be distributed on next finalization.",
+              "**Units:** Virtual SOL (lamports, 1e9 per SOL)",
+              "**Important:** Fee rewards are denominated in virtual SOL, not LST tokens.",
+              "When a user pays a 1% fee on a 100 virtual SOL withdrawal, 1 virtual SOL",
+              "is added to `pending_withdrawal_fees`, regardless of the underlying LST type.",
+              "**Updates on:**",
+              "- Withdrawal fees: += fee_amount (virtual SOL)",
+              "- `finalize_rewards()`: reset to 0 after distribution",
+              "**Note:** These fee fields (deposit + withdrawal) contain only transaction fees.",
+              "LST appreciation is tracked separately in `pending_appreciation`. At finalization,",
+              "all three are combined and distributed via the accumulator."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_appreciation",
+            "docs": [
+              "Pending LST appreciation rewards waiting to be distributed.",
+              "**Units:** Virtual SOL (lamports, 1e9 per SOL)",
+              "**Important:** Appreciation is denominated in virtual SOL. When an LST's",
+              "exchange rate increases from 1.05 to 1.06, the virtual SOL value of the",
+              "pool's holdings increases. This delta (valued at the `harvested_exchange_rate`)",
+              "is added to `pending_appreciation`.",
+              "**Updates on:**",
+              "- `add_appreciation()`: += amount (from harvest_lst_appreciation)",
+              "- `finalize_rewards()`: reset to 0 after distribution",
+              "**Audit Note:** This separation enables the finalization event to report",
+              "fee_rewards vs appreciation_rewards unambiguously, providing transparency",
+              "on yield sources for indexers and users."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "finalized_balance",
+            "docs": [
+              "Balance frozen at last finalization (not modified between finalizations).",
+              "**Units:** Lamports (1e9 per SOL) - virtual SOL value",
+              "**Updates on:** `finalize_rewards()` only",
+              "This is the denominator used to compute reward-per-unit during finalization.",
+              "Between finalizations, only pending_deposits/pending_withdrawals change."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending_deposits",
+            "docs": [
+              "Deposits since last finalization, for accumulator calculation only.",
+              "**Units:** Lamports (1e9 per SOL) - virtual SOL value",
+              "**Purpose:** Used solely in `finalize_rewards()` to compute the reward",
+              "accumulator denominator: `total_pool = finalized_balance + pending_deposits - pending_withdrawals`.",
+              "This is NOT the source of truth for pool balance (vault balances are).",
+              "**Value tracked:** Principal (virtual_sol - fee). This equals the user's ZK",
+              "commitment value. Fees are tracked separately in `pending_deposit_fees`.",
+              "**Updates on:**",
+              "- Deposit instruction: += principal",
+              "- `finalize_rewards()`: reset to 0"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending_withdrawals",
+            "docs": [
+              "Withdrawals since last finalization, for accumulator calculation only.",
+              "**Units:** Lamports (1e9 per SOL) - virtual SOL value",
+              "**Purpose:** Used solely in `finalize_rewards()` to compute the reward",
+              "accumulator denominator: `total_pool = finalized_balance + pending_deposits - pending_withdrawals`.",
+              "This is NOT the source of truth for pool balance (vault balances are).",
+              "**Value tracked:** Commitment value being burned (params.amount in virtual SOL).",
+              "This is the full amount before withdrawal fee. Fees are tracked separately in",
+              "`pending_withdrawal_fees`.",
+              "**Updates on:**",
+              "- Withdraw instruction: += virtual_sol",
+              "- `finalize_rewards()`: reset to 0"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "deposit_fee_rate",
+            "docs": [
+              "Deposit fee rate in basis points (e.g., 100 = 1%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "withdrawal_fee_rate",
+            "docs": [
+              "Withdrawal fee rate in basis points (e.g., 100 = 1%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "min_buffer_bps",
+            "docs": [
+              "Minimum WSOL buffer as basis points (e.g., 2000 = 20%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "_pad1",
+            "docs": [
+              "Explicit padding for u64 alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "min_buffer_amount",
+            "docs": [
+              "Minimum absolute WSOL buffer amount in lamports"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether the unified pool is active (1 = active, 0 = paused)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_pad2",
+            "docs": [
+              "Explicit padding for u128 alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                14
+              ]
+            }
+          },
+          {
+            "name": "total_deposited",
+            "docs": [
+              "Total deposits over lifetime (unified SOL)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_withdrawn",
+            "docs": [
+              "Total withdrawals over lifetime (unified SOL)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_rewards_distributed",
+            "docs": [
+              "Total rewards distributed over lifetime"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_deposit_fees",
+            "docs": [
+              "Total deposit fees collected (in virtual SOL)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_withdrawal_fees",
+            "docs": [
+              "Total withdrawal fees collected (in virtual SOL)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "_reserved_stats",
+            "docs": [
+              "Reserved for future use (maintains struct alignment)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "total_appreciation",
+            "docs": [
+              "Total LST appreciation harvested across all LSTs (in virtual SOL)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "max_deposit_amount",
+            "docs": [
+              "Maximum deposit amount per transaction (in virtual SOL, 0 = no limit)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "docs": [
+              "Number of deposit transactions"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "withdrawal_count",
+            "docs": [
+              "Number of withdrawal transactions"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lst_count",
+            "docs": [
+              "Number of registered LST configs"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "docs": [
+              "Reserved for future use (23 bytes for 16-byte struct alignment)",
+              "Note: Increased from 15 to 23 bytes after removing transfer_count (u64 = 8 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                23
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UnifiedSolRewardsFinalizedEvent",
+      "docs": [
+        "Event emitted when rewards are finalized (accumulator updated).",
+        "**Audit Note:** This event provides unambiguous breakdown of reward sources:",
+        "- `deposit_fees`: Deposit fees collected since last finalization",
+        "- `withdrawal_fees`: Withdrawal fees collected since last finalization",
+        "- `appreciation_rewards`: LST appreciation harvested since last finalization",
+        "- `lst_count`: Confirms all registered LSTs were included in this finalization",
+        "Indexers can verify: `deposit_fees + withdrawal_fees + appreciation_rewards` was distributed to the accumulator."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "total_virtual_sol",
+            "docs": [
+              "Total virtual SOL at finalization (denominator for reward calculation)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "new_accumulator",
+            "docs": [
+              "New accumulator value (compare across events for APY calculation)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "deposit_fees",
+            "docs": [
+              "Deposit fees distributed (in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "withdrawal_fees",
+            "docs": [
+              "Withdrawal fees distributed (in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "appreciation_rewards",
+            "docs": [
+              "Appreciation rewards distributed (LST yield, in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "epoch",
+            "docs": [
+              "Reward epoch number (increments after each finalization)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when finalization occurred"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lst_count",
+            "docs": [
+              "Number of LST configs that were validated and finalized.",
+              "Matches UnifiedSolPoolConfig.lst_count - confirms all LSTs were included."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 16-byte alignment (struct total: 88 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UnifiedSolWithdrawalEvent",
+      "docs": [
+        "Event emitted when SOL/LST is withdrawn from the unified SOL pool."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lst_mint",
+            "docs": [
+              "LST mint address"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "lst_amount",
+            "docs": [
+              "LST tokens withdrawn (in token base units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "sol_value",
+            "docs": [
+              "SOL-equivalent value (in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "docs": [
+              "Protocol fee (in virtual SOL / lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "exchange_rate",
+            "docs": [
+              "Exchange rate used"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Solana slot when the withdrawal occurred"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for alignment"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "pdas": [
+    {
+      "name": "LstConfig",
+      "docs": [
+        "LST config PDA - per LST mint",
+        "Seeds: [\"lst_config\", lst_mint]"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            108,
+            115,
+            116,
+            95,
+            99,
+            111,
+            110,
+            102,
+            105,
+            103
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "lst_mint"
+        }
+      ]
+    },
+    {
+      "name": "LstVault",
+      "docs": [
+        "LST vault PDA - per LST config",
+        "Seeds: [\"lst_vault\", lst_config]"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            108,
+            115,
+            116,
+            95,
+            118,
+            97,
+            117,
+            108,
+            116
+          ]
+        },
+        {
+          "kind": "account",
+          "path": "lst_config"
+        }
+      ]
+    },
+    {
+      "name": "UnifiedSolPoolConfig",
+      "docs": [
+        "Unified SOL pool config singleton",
+        "Seeds: [\"unified_sol_pool\"]"
+      ],
+      "seeds": [
+        {
+          "kind": "const",
+          "value": [
+            117,
+            110,
+            105,
+            102,
+            105,
+            101,
+            100,
+            95,
+            115,
+            111,
+            108,
+            95,
+            112,
+            111,
+            111,
+            108
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# TypeScript build output in src/ (should go to dist/)
+# These can be generated if tsc is run incorrectly
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+
+# Circom build artifacts
+build/
+build.zip
+
+# Powers of tau files
+ptau/
+
+# Large binary artifacts - download via circuits:download or build via circom:setup
+artifacts/*.wasm
+artifacts/*.zkey
+artifacts/*.vkey.json
+
+# Keep manifest.json (small, needed for constants generation)
+!artifacts/manifest.json

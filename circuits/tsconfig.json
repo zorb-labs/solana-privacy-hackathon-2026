@@ -1,0 +1,19 @@
+{
+  "extends": "@macalinao/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "isolatedDeclarations": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "circom",
+    "scripts",
+    "src/setup"
+  ],
+  "references": [{ "path": "../api-schemas" }]
+}

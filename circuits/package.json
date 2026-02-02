@@ -1,0 +1,129 @@
+{
+  "name": "@zorb-labs/circuits",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./relayer": {
+      "types": "./dist/relayer/index.d.ts",
+      "import": "./dist/relayer/index.js",
+      "default": "./dist/relayer/index.js"
+    },
+    "./relayer/client": {
+      "types": "./dist/relayer/client-entry.d.ts",
+      "import": "./dist/relayer/client-entry.js",
+      "default": "./dist/relayer/client-entry.js"
+    },
+    "./relayer/server": {
+      "types": "./dist/relayer/server-entry.d.ts",
+      "import": "./dist/relayer/server-entry.js",
+      "default": "./dist/relayer/server-entry.js"
+    },
+    "./session": {
+      "types": "./dist/session/index.d.ts",
+      "import": "./dist/session/index.js",
+      "default": "./dist/session/index.js"
+    },
+    "./session/client": {
+      "types": "./dist/session/client-entry.d.ts",
+      "import": "./dist/session/client-entry.js",
+      "default": "./dist/session/client-entry.js"
+    },
+    "./session/relayer": {
+      "types": "./dist/session/relayer-entry.d.ts",
+      "import": "./dist/session/relayer-entry.js",
+      "default": "./dist/session/relayer-entry.js"
+    },
+    "./fee": {
+      "types": "./dist/fee/index.d.ts",
+      "import": "./dist/fee/index.js",
+      "default": "./dist/fee/index.js"
+    },
+    "./loader": {
+      "types": "./dist/circuits/loader.d.ts",
+      "import": "./dist/circuits/loader.js",
+      "default": "./dist/circuits/loader.js"
+    },
+    "./routing": {
+      "types": "./dist/routing/index.d.ts",
+      "import": "./dist/routing/index.js",
+      "default": "./dist/routing/index.js"
+    },
+    "./artifacts": {
+      "types": "./dist/artifacts.d.ts",
+      "import": "./dist/artifacts.js",
+      "default": "./dist/artifacts.js"
+    },
+    "./artifacts/*": "./artifacts/*",
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js",
+      "default": "./dist/manifest.js"
+    },
+    "./wallet-v2": {
+      "types": "./dist/wallet-v2/index.d.ts",
+      "import": "./dist/wallet-v2/index.js",
+      "default": "./dist/wallet-v2/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "artifacts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:all2": "bun run build:circom && tsc",
+    "build:watch": "tsc --watch",
+    "build:circom": "bun run scripts/build-circuits.ts",
+    "build:all": "bun run scripts/build-all.ts",
+    "circom:setup": "bun run scripts/setup-ceremony.ts",
+    "circom:compile": "bun run scripts/compile-circuits.ts",
+    "circom:phase2": "bun run scripts/run-phase-2.ts",
+    "circuits:download": "bun run scripts/download-artifacts.ts",
+    "manifest:generate": "bun run scripts/generate-manifest.ts",
+    "manifest:sync": "bun run scripts/generate-manifest.ts --sync",
+    "manifest:status": "bun run scripts/generate-manifest.ts --status",
+    "manifest:upload": "bun run scripts/legacy/upload-artifacts.ts",
+    "clean": "rm -rf build/ dist/ node_modules/ .eslintcache",
+    "lint": "biome check",
+    "lint:fix": "biome check --fix --unsafe",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prove:rapidsnark": "bun run scripts/rapidsnark-prove.ts",
+    "prove:benchmark": "bun run scripts/benchmark-prover.ts",
+    "fixtures:deposit": "bun run scripts/generate-proof-fixture.ts",
+    "fixtures:slot-config": "bun run scripts/generate-slot-config-fixtures.ts"
+  },
+  "devDependencies": {
+    "@macalinao/eslint-config": "catalog:",
+    "@macalinao/tsconfig": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/circomlibjs": "^0.1.6",
+    "@types/snarkjs": "^0.7.9",
+    "circomlib": "^2.0.5",
+    "snarkjs": "^0.7.5",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
+    "@noble/ciphers": "^2.0.1",
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^1.8.0",
+    "@scure/base": "^2.0.0",
+    "@scure/bip39": "^2.0.1",
+    "@solana-program/token": "catalog:",
+    "@solana/kit": "catalog:",
+    "@sqlite.org/sqlite-wasm": "^3.49.1-build1",
+    "circomlibjs": "^0.1.7",
+    "tiny-invariant": "^1.3.3",
+    "yaml": "^2.8.2",
+    "zod": "catalog:"
+  }
+}

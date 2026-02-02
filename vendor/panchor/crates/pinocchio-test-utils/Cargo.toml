@@ -1,0 +1,15 @@
+[package]
+name = "pinocchio-test-utils"
+version = "0.1.0"
+edition = "2024"
+description = "Testing utilities for Pinocchio programs"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+pinocchio = { workspace = true }
+
+[dev-dependencies]
+pinocchio-pubkey = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "panchor-cli"
+version = "0.1.0"
+edition = "2024"
+description = "CLI for Panchor-based Solana programs"
+
+[[bin]]
+name = "panchor"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+walkdir = "2.4"
+toml = "0.8"
+toml_edit = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+panchor-idl-gen = { version = "0.1.0", path = "../panchor-idl-gen" }
