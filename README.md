@@ -20,6 +20,28 @@ All transactions must present a non-membership proof against a provable nullifie
 
 Batch insertion and PDA closure amortizes cost of maintaining nullifier set to **transaction fees only**, no rent.
 
+#### Why This Matters: Privacy Cash Protocol Analysis
+
+We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD`), a live Solana privacy protocol, to quantify nullifier PDA costs. The protocol has **spent ~214 SOL (~$42,800) on nullifier PDA rent** that remains permanently locked:
+
+| Metric | Value |
+|--------|-------|
+| **Period** | Aug 5, 2025 – Jan 22, 2026 |
+| **Transactions** | 112,312 |
+| **Nullifier PDAs created** | 224,536 |
+| **Rent per nullifier PDA** | ~0.000954 SOL (64 bytes) |
+| **Total nullifier rent locked** | **~214 SOL (~$42,800)** |
+
+Nullifier PDAs cannot be closed—they must persist forever to prevent double-spends. Our indexed Merkle tree design with epoch-based batch insertion and PDA closure eliminates this permanent rent burden, reducing costs to transaction fees only.
+
+*Analysis performed over 112,312 transactions:*
+- First: [`3SYDtthD...uN44`](https://solscan.io/tx/3SYDtthDLD83gDgSKAGLX3nLnhLmng1VeRTNNcrB4dNXqwYsNTUP35HBurwDx5xM4bCguMBQui8BmHGfPsd5uN44) (Aug 5, 2025)
+- Last: [`586nTb9p...XBt`](https://solscan.io/tx/586nTb9p6sZWBPzqgimVgFYGx6uUwpmhY8eSMeqYeyQCscgDUHgcfnKmAFc9EqCKcQyG12MPJ4KsQXK6RuWeSXBt) (Jan 22, 2026)
+
+View protocol analytics: [Privacy Cash on OrbMarkets](https://orbmarkets.io/protocol/9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD)
+
+
+
 ### 3. Multi-Asset Transact with Public-Slot Routing
 
 Multi-asset split-join circuit handles value conservation of transacting with optional *yield accumulation*.
