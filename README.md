@@ -6,7 +6,11 @@
 
 ### 1. Unified SOL: Yield-Bearing Shielded SOL
 
-SOL equivalents (wSOL, jitoSOL, mSOL, bSOL) aggregate into unified anonyminity set for fungibility in-circuit, receive yield-bearing shielded SOL that earns staking yield in-circuit.
+SOL equivalents (wSOL, jitoSOL, mSOL, bSOL) aggregate into unified anonymity set for fungibility in-circuit, receive yield-bearing shielded SOL that earns staking yield in-circuit.
+
+<p align="center">
+  <img src="docs/unified-sol.svg" alt="Unified SOL Pool" width="700"/>
+</p>
 
 See [Yield Mechanism](docs/YIELD_MECHANISM.md) for details.
 
@@ -22,15 +26,15 @@ Batch insertion and PDA closure amortizes cost of maintaining nullifier set to *
 
 #### Why This Matters: Privacy Cash Protocol Analysis
 
-We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD`), a live Solana privacy protocol, to quantify nullifier PDA costs. The protocol has **spent ~214 SOL (~$42,800) on nullifier PDA rent** that remains permanently locked:
+We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD`), a live Solana privacy protocol, to quantify nullifier PDA costs. The protocol has **spent &#126;214 SOL (&#126;$42,800) on nullifier PDA rent** that remains permanently locked:
 
 | Metric | Value |
 |--------|-------|
 | **Period** | Aug 5, 2025 – Jan 22, 2026 |
 | **Transactions** | 112,312 |
 | **Nullifier PDAs created** | 224,536 |
-| **Rent per nullifier PDA** | ~0.000954 SOL (64 bytes) |
-| **Total nullifier rent locked** | **~214 SOL (~$42,800)** |
+| **Rent per nullifier PDA** | &#126;0.000954 SOL (64 bytes) |
+| **Total nullifier rent locked** | **&#126;214 SOL (&#126;$42,800)** |
 
 Nullifier PDAs cannot be closed—they must persist forever to prevent double-spends. Our indexed Merkle tree design with epoch-based batch insertion and PDA closure eliminates this permanent rent burden, reducing costs to transaction fees only.
 
@@ -80,11 +84,11 @@ Circom circuits for zero-knowledge proof generation:
 
 | Template | File | Constraints | Description |
 |----------|------|-------------|-------------|
-| `MerkleProof(levels)` | `lib/merkle.circom` | ~246 × levels | Verifies Merkle inclusion proof, returning computed root |
-| `NoteCommitment()` | `lib/notes.circom` | ~768 | Computes `Poseidon(domain, version, assetId, amount, pk, blinding, rewardAcc, rho)` |
-| `ComputeNullifier()` | `lib/notes.circom` | ~393 | Position-independent nullifier: `Poseidon(nk, rho, commitment)` |
-| `ComputeReward()` | `lib/rewards.circom` | ~78 | Calculates `floor(amount × (globalAcc - noteAcc) / 1e18)` |
-| `IndexedMerkleTreeNonMembership(H)` | `lib/indexed-merkle-tree.circom` | ~7,244 | Proves value NOT in tree via low-element ordering + Merkle proof |
+| `MerkleProof(levels)` | `lib/merkle.circom` | &#126;246 × levels | Verifies Merkle inclusion proof, returning computed root |
+| `NoteCommitment()` | `lib/notes.circom` | &#126;768 | Computes `Poseidon(domain, version, assetId, amount, pk, blinding, rewardAcc, rho)` |
+| `ComputeNullifier()` | `lib/notes.circom` | &#126;393 | Position-independent nullifier: `Poseidon(nk, rho, commitment)` |
+| `ComputeReward()` | `lib/rewards.circom` | &#126;78 | Calculates `floor(amount × (globalAcc - noteAcc) / 1e18)` |
+| `IndexedMerkleTreeNonMembership(H)` | `lib/indexed-merkle-tree.circom` | &#126;7,244 | Proves value NOT in tree via low-element ordering + Merkle proof |
 | `OneHotValidator(n)` | `lib/one-hot.circom` | 3n + 2 | Validates one-hot selector with enabled-mask and dot-product binding |
 
 Key cryptographic primitives:
@@ -113,7 +117,7 @@ These may be changed without notice.
 | **Asset Isolation** | Roster uniqueness prevents cross-asset routing |
 | **Yield Realization** | `reward = amount × (globalAcc - noteAcc) / 1e18` |
 | **Plausible Deniability** | 8 reward lines hide which 1-2 assets are used |
-| **No State Contention** | Frozen accumulator for ~18 min proof validity |
+| **No State Contention** | Frozen accumulator for &#126;18 min proof validity |
 | **Double-Spend Prevention** | Indexed Merkle Tree with non-membership proofs |
 | **Nullifier Atomicity** | Batch insertion chains N updates atomically |
 
