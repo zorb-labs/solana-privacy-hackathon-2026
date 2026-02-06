@@ -1,4 +1,12 @@
-# ZORB Solana Privacy Hackathon Submission 2026
+<div align="center">
+
+![ZORB](./docs/header.svg)
+
+</div>
+
+ZORB is a privacy protocol on Solana that enables private transfers on Solana similar to Zcash. Native to Solana, it offers **Unified SOL** – a yield-bearing shielded SOL asset aggregating multiple LSTs into a unified anonymity set with private staking, allowing users to realize private yield without revealing balances, assets or transaction history.
+
+**ZORB offers private transactions at the same cost of Solana transactions.**
 
 > **Warning**: This software is unaudited and experimental. Use at your own risk. Do not use with funds you cannot afford to lose.
 
