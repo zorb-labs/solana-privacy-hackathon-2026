@@ -16,7 +16,7 @@ See [Yield Mechanism](docs/YIELD_MECHANISM.md) for details.
 
 **Epoch duration**: `UPDATE_SLOT_INTERVAL = 2700 slots × 400ms/slot = 1080s = 18 min`
 
-<!-- ```
+```
         ◄──────────── Epoch N (≥ 2700 slots, ~18 min) ─────────────►
 
 wSOL     ────●──────────────────────────────────────────────────────┐
@@ -34,7 +34,7 @@ globalAcc ═══════════════════════�
           (frozen from prev epoch — proofs target this)   accumulator += Δ
                                                           freeze new rates
                                                           epoch N → N+1
-``` -->
+```
 
 > **State Contention Prevention**: Proving is against the frozen `globalAcc` value, which remains stable for a minimum of 2700 slots (~18 min) between `finalize_unified_rewards` calls. This epoch duration accommodates proof generation (10-60s), transaction submission (5-30s), and a safety buffer for retries—ensuring proofs remain valid without risking invalidation from accumulator updates.
 
@@ -46,11 +46,11 @@ Private state requires commitments and nullifiers ([Hopwood et al.](https://epri
 
 | Nullifiers | Txs @ 2 nullifiers per | Txs @ 4 nullifiers per | SOL locked | @ $200/SOL | @ $90/SOL |
 |--:|--:|--:|--:|--:|--:|
-| 1 | 1 | 1 | 0.001 | $0.19 | $0.09 |
-| 1,000 | 500 | 250 | 0.95 | $191 | $86 |
-| 10,000 | 5,000 | 2,500 | 9.54 | $1,908 | $859 |
-| 100,000 | 50,000 | 25,000 | 95.40 | $19,080 | $8,586 |
-| 1,000,000 | 500,000 | 250,000 | 954.00 | **$190,800** | **$85,860** |
+| 1 | 1 | 1 | 0.000954000 | $0.19 | $0.09 |
+| 1,000 | 500 | 250 | 0.954000000 | $191 | $86 |
+| 10,000 | 5,000 | 2,500 | 9.540000000 | $1,908 | $859 |
+| 100,000 | 50,000 | 25,000 | 95.400000000 | $19,080 | $8,586 |
+| 1,000,000 | 500,000 | 250,000 | 954.000000000 | **$190,800** | **$85,860** |
 
 We eliminate this cost by pushing nullifiers into an indexed merkle tree, allowing PDA closure once the nullifier is frozen in all provable epoch roots.
 
@@ -107,33 +107,6 @@ Three Rust programs built with [Pinocchio](https://github.com/febo/pinocchio) (l
 | **Shielded Pool** | `programs/shielded-pool/` | Hub/router that verifies Groth16 proofs, manages commitment Merkle tree, tracks nullifiers, and dispatches to pool programs via CPI |
 | **Token Pool** | `programs/token-pool/` | Handles SPL token deposits/withdrawals with epoch-based yield distribution |
 | **Unified SOL Pool** | `programs/unified-sol-pool/` | Manages LST (jitoSOL, mSOL, etc.) with exchange rate conversion and staking yield capture |
-
-### Groth16 over BN254 Circuits
-
-Circom circuits for zero-knowledge proof generation:
-
-| Circuit | Location | Purpose |
-|---------|----------|---------|
-| `transaction.circom` | `circuits/circom/` | Main shielded transaction (4-in-4-out UTXO model) |
-| `nullifier-*.circom` | `circuits/circom/` | Batch nullifier insertion for indexed Merkle tree |
-| `lib/*.circom` | `circuits/circom/lib/` | Shared templates: Poseidon hashing, Merkle proofs, reward computation |
-
-#### Core Circuit Templates
-
-| Template | File | Constraints | Description |
-|----------|------|-------------|-------------|
-| `MerkleProof(levels)` | `lib/merkle.circom` | &#126;246 × levels | Verifies Merkle inclusion proof, returning computed root |
-| `NoteCommitment()` | `lib/notes.circom` | &#126;768 | Computes `Poseidon(domain, version, assetId, amount, pk, blinding, rewardAcc, rho)` |
-| `ComputeNullifier()` | `lib/notes.circom` | &#126;393 | Position-independent nullifier: `Poseidon(nk, rho, commitment)` |
-| `ComputeReward()` | `lib/rewards.circom` | &#126;78 | Calculates `floor(amount × (globalAcc - noteAcc) / 1e18)` |
-| `IndexedMerkleTreeNonMembership(H)` | `lib/indexed-merkle-tree.circom` | &#126;7,244 | Proves value NOT in tree via low-element ordering + Merkle proof |
-| `OneHotValidator(n)` | `lib/one-hot.circom` | 3n + 2 | Validates one-hot selector with enabled-mask and dot-product binding |
-
-Key cryptographic primitives:
-- **Commitment scheme**: Poseidon hash over BN254 scalar field
-- **Nullifier derivation**: Position-independent (Orchard-style) using `rho` field
-- **Merkle tree**: 26-level indexed Merkle tree (Aztec-style, &#126;67M capacity)
-- **Reward accumulator**: Fixed-point arithmetic for yield distribution
 
 ## Devnet Deployment
 
