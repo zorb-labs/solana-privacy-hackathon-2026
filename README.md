@@ -14,7 +14,9 @@ ZORB is a privacy protocol on Solana that enables private transfers on Solana ar
 
 ### 1. Rent-Free Nullifier Scheme
 
-Private state requires commitments and nullifiers ([Hopwood et al.](https://eprint.iacr.org/2018/962.pdf)). On Solana, nullifiers are typically represented as PDAs — each costing a rent-exempt minimum in permanently locked SOL.
+Private state requires commitments and nullifiers[^1]. On Solana, nullifiers are typically represented as PDAs — each costing a rent-exempt minimum in permanently locked SOL.
+
+[^1]: Bowe et al., [*ZEXE: Enabling Decentralized Private Computation*](https://eprint.iacr.org/2018/962.pdf), 2020.
 
 **Permanent nullifier rent at scale** (~0.000954 SOL per PDA, per [Privacy Cash](#why-this-matters-privacy-cash-protocol-analysis) on-chain data):
 
