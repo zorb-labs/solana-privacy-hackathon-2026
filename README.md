@@ -8,21 +8,61 @@
 
 SOL equivalents (wSOL, jitoSOL, mSOL, bSOL) aggregate into unified anonymity set for fungibility in-circuit, receive yield-bearing shielded SOL that earns staking yield in-circuit.
 
-<p align="center">
+<!-- <p align="center">
   <img src="docs/unified-sol.svg" alt="Unified SOL Pool" width="700"/>
-</p>
+</p> -->
 
 See [Yield Mechanism](docs/YIELD_MECHANISM.md) for details.
 
+**Epoch duration**: `UPDATE_SLOT_INTERVAL = 2700 slots × 400ms/slot = 1080s = 18 min`
+
+<!-- ```
+        ◄──────────── Epoch N (≥ 2700 slots, ~18 min) ─────────────►
+
+wSOL     ────●──────────────────────────────────────────────────────┐
+          harvest                                                    │
+jitoSOL  ──────●────────────────────────────────────────────────────┤
+            harvest                                                  │
+mSOL     ────────●──────────────────────────────────────────────────┤
+              harvest                                                │
+bSOL     ──────────●────────────────────────────────────────────────┤
+                harvest    ↑ proofs generated against frozen         │
+                           ↑ globalAcc + harvested_exchange_rate     │
+                                               all LSTs harvested ──┤
+                                                                     ▼
+globalAcc ═══════════════════════════════════════════════════ finalize ═══
+          (frozen from prev epoch — proofs target this)   accumulator += Δ
+                                                          freeze new rates
+                                                          epoch N → N+1
+``` -->
+
+> **State Contention Prevention**: Proving is against the frozen `globalAcc` value, which remains stable for a minimum of 2700 slots (~18 min) between `finalize_unified_rewards` calls. This epoch duration accommodates proof generation (10-60s), transaction submission (5-30s), and a safety buffer for retries—ensuring proofs remain valid without risking invalidation from accumulator updates.
+
 ### 2. Rent-Free Nullifier Scheme
 
-Commitment and nullifier scheme for private state involves maintaining a consistent nullifier set.
+Private state requires commitments and nullifiers ([Hopwood et al.](https://eprint.iacr.org/2018/962.pdf)). On Solana, nullifiers are typically represented as PDAs — each costing a rent-exempt minimum in permanently locked SOL.
 
-We push nullifiers into our indexed merkle tree, allowing for PDA closure some time later. Prior work is LightProtocol's concurrent merkle tree, but we use an [indexed merkle tree described by Aztec](https://docs.aztec.network/developers/docs/foundational-topics/advanced/storage/indexed_merkle_tree) for lower constraints (8-16x) due to lower height.
+**Permanent nullifier rent at scale** (~0.000954 SOL per PDA, per [Privacy Cash](#why-this-matters-privacy-cash-protocol-analysis) on-chain data):
 
-All transactions must present a non-membership proof against a provable nullifier epoch. This is delegatable to a proof server (and with GPUs, is extremely fast), as only nullifiers are exposed. 
+| Nullifiers | Txs @ 2 nullifiers per | Txs @ 4 nullifiers per | SOL locked | @ $200/SOL | @ $90/SOL |
+|--:|--:|--:|--:|--:|--:|
+| 1 | 1 | 1 | 0.001 | $0.19 | $0.09 |
+| 1,000 | 500 | 250 | 0.95 | $191 | $86 |
+| 10,000 | 5,000 | 2,500 | 9.54 | $1,908 | $859 |
+| 100,000 | 50,000 | 25,000 | 95.40 | $19,080 | $8,586 |
+| 1,000,000 | 500,000 | 250,000 | 954.00 | **$190,800** | **$85,860** |
 
-Batch insertion and PDA closure amortizes cost of maintaining nullifier set to **transaction fees only**, no rent.
+We eliminate this cost by pushing nullifiers into an indexed merkle tree, allowing PDA closure once the nullifier is frozen in all provable epoch roots.
+
+Similar prior work includes Light Protocol's concurrent merkle tree; we use an [indexed merkle tree described by Aztec](https://docs.aztec.network/developers/docs/foundational-topics/advanced/storage/indexed_merkle_tree) for lower constraints (8-16x) due to reduced height.
+
+All transactions present a non-membership proof against a provable nullifier epoch root. This is delegatable to a proof server (and with GPUs, extremely fast) as only nullifiers are exposed.
+
+Batch insertion and PDA closure amortize the cost of maintaining the nullifier set to **transaction fees only** — no permanent rent.
+
+<!-- <p align="center">
+  <img src="docs/nullifier-scheme.svg" alt="Rent-Free Nullifier Scheme" width="850"/>
+</p> -->
 
 #### Why This Matters: Privacy Cash Protocol Analysis
 
@@ -36,15 +76,11 @@ We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorL
 | **Rent per nullifier PDA** | &#126;0.000954 SOL (64 bytes) |
 | **Total nullifier rent locked** | **&#126;214 SOL (&#126;$42,800)** |
 
-Nullifier PDAs cannot be closed—they must persist forever to prevent double-spends. Our indexed Merkle tree design with epoch-based batch insertion and PDA closure eliminates this permanent rent burden, reducing costs to transaction fees only.
-
 *Analysis performed over 112,312 transactions:*
 - First: [`3SYDtthD...uN44`](https://solscan.io/tx/3SYDtthDLD83gDgSKAGLX3nLnhLmng1VeRTNNcrB4dNXqwYsNTUP35HBurwDx5xM4bCguMBQui8BmHGfPsd5uN44) (Aug 5, 2025)
 - Last: [`586nTb9p...XBt`](https://solscan.io/tx/586nTb9p6sZWBPzqgimVgFYGx6uUwpmhY8eSMeqYeyQCscgDUHgcfnKmAFc9EqCKcQyG12MPJ4KsQXK6RuWeSXBt) (Jan 22, 2026)
 
 View protocol analytics: [Privacy Cash on OrbMarkets](https://orbmarkets.io/protocol/9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD)
-
-
 
 ### 3. Multi-Asset Transact with Public-Slot Routing
 
@@ -52,7 +88,13 @@ Multi-asset split-join circuit handles value conservation of transacting with op
 
 **`nRewardLines`** public yield accumulators, **`nRosterSlots`** private routing slots, and **`nPublicLines`** deposit/withdrawal lines interconnect via one-hot selectors—notes and public lines select into roster slots, which fetch accumulators from reward lines. Per-slot value conservation is enforced while the mapping remains hidden, creating plausible deniability.
 
+<!-- <p align="center">
+  <img src="docs/circuit-routing.svg" alt="Circuit Routing Architecture" width="750"/>
+</p> -->
+
 See [Circuit Routing Architecture](docs/CIRCUIT_ROUTING.md) and [Yield Mechanism](docs/YIELD_MECHANISM.md) for details.
+
+> **State Contention Prevention**: All 8 reward accumulators used as public inputs are frozen values from the previous epoch finalization (~18 min stale). This eliminates state contention for multi-asset proofs—the circuit proves against stable accumulator snapshots rather than live on-chain values that could change during proof generation.
 
 ---
 
@@ -94,7 +136,7 @@ Circom circuits for zero-knowledge proof generation:
 Key cryptographic primitives:
 - **Commitment scheme**: Poseidon hash over BN254 scalar field
 - **Nullifier derivation**: Position-independent (Orchard-style) using `rho` field
-- **Merkle tree**: 32-level indexed Merkle tree (Aztec-style)
+- **Merkle tree**: 26-level indexed Merkle tree (Aztec-style, &#126;67M capacity)
 - **Reward accumulator**: Fixed-point arithmetic for yield distribution
 
 ## Devnet Deployment
@@ -159,7 +201,3 @@ cargo test
 - **Zero-Knowledge Proofs**: Groth16 with BN254 curve
 - **Framework**: [Panchor](vendor/panchor/) - lightweight no_std Solana framework
 - **Runtime**: Pinocchio for low-CU operations
-
-## License
-
-Apache-2.0
