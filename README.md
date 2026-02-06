@@ -66,19 +66,15 @@ Batch insertion and PDA closure amortize the cost of maintaining the nullifier s
 
 #### Why This Matters: Privacy Cash Protocol Analysis
 
-We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD`), a live Solana privacy protocol, to quantify nullifier PDA costs. The protocol has **spent &#126;214 SOL (&#126;$42,800) on nullifier PDA rent** that remains permanently locked:
+We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD`), a live Solana privacy protocol, to quantify nullifier PDA costs. The protocol has **&#126;267 SOL (&#126;$53K at $200/SOL) in nullifier PDA rent** permanently locked:
 
 | Metric | Value |
 |--------|-------|
-| **Period** | Aug 5, 2025 – Jan 22, 2026 |
-| **Transactions** | 112,312 |
-| **Nullifier PDAs created** | 224,536 |
-| **Rent per nullifier PDA** | &#126;0.000954 SOL (64 bytes) |
-| **Total nullifier rent locked** | **&#126;214 SOL (&#126;$42,800)** |
+| **Nullifier PDAs on-chain** | 279,836 |
+| **Rent per nullifier PDA** | &#126;0.000954 SOL (9 bytes) |
+| **Total nullifier rent locked** | **&#126;267 SOL** |
 
-*Analysis performed over 112,312 transactions:*
-- First: [`3SYDtthD...uN44`](https://solscan.io/tx/3SYDtthDLD83gDgSKAGLX3nLnhLmng1VeRTNNcrB4dNXqwYsNTUP35HBurwDx5xM4bCguMBQui8BmHGfPsd5uN44) (Aug 5, 2025)
-- Last: [`586nTb9p...XBt`](https://solscan.io/tx/586nTb9p6sZWBPzqgimVgFYGx6uUwpmhY8eSMeqYeyQCscgDUHgcfnKmAFc9EqCKcQyG12MPJ4KsQXK6RuWeSXBt) (Jan 22, 2026)
+*Counted via `getProgramAccounts` filtered by nullifier discriminator (`fa1feeb1d56230ac`) on Feb 5, 2026. Program has 362,264 total accounts; 279,836 are 9-byte nullifier PDAs, the rest are UTXO notes, merkle trees, and config.*
 
 View protocol analytics: [Privacy Cash on OrbMarkets](https://orbmarkets.io/protocol/9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD)
 
