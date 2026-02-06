@@ -12,41 +12,7 @@ ZORB is a privacy protocol on Solana that enables private transfers on Solana ar
 
 ## Our Contributions
 
-### 1. Unified SOL: Yield-Bearing Shielded SOL
-
-SOL equivalents (wSOL, jitoSOL, mSOL, bSOL) aggregate into unified anonymity set for fungibility in-circuit, receive yield-bearing shielded SOL that earns staking yield in-circuit.
-
-<!-- <p align="center">
-  <img src="docs/unified-sol.svg" alt="Unified SOL Pool" width="700"/>
-</p> -->
-
-See [Yield Mechanism](docs/YIELD_MECHANISM.md) for details.
-
-**Epoch duration**: `UPDATE_SLOT_INTERVAL = 2700 slots × 400ms/slot = 1080s = 18 min`
-
-```
-        ◄──────────── Epoch N (≥ 2700 slots, ~18 min) ─────────────►
-
-wSOL     ────●──────────────────────────────────────────────────────┐
-          harvest                                                    │
-jitoSOL  ──────●────────────────────────────────────────────────────┤
-            harvest                                                  │
-mSOL     ────────●──────────────────────────────────────────────────┤
-              harvest                                                │
-bSOL     ──────────●────────────────────────────────────────────────┤
-                harvest    ↑ proofs generated against frozen         │
-                           ↑ globalAcc + harvested_exchange_rate     │
-                                               all LSTs harvested ──┤
-                                                                     ▼
-globalAcc ═══════════════════════════════════════════════════ finalize ═══
-          (frozen from prev epoch — proofs target this)   accumulator += Δ
-                                                          freeze new rates
-                                                          epoch N → N+1
-```
-
-> **State Contention Prevention**: Proving is against the frozen `globalAcc` value, which remains stable for a minimum of 2700 slots (~18 min) between `finalize_unified_rewards` calls. This epoch duration accommodates proof generation (10-60s), transaction submission (5-30s), and a safety buffer for retries—ensuring proofs remain valid without risking invalidation from accumulator updates.
-
-### 2. Rent-Free Nullifier Scheme
+### 1. Rent-Free Nullifier Scheme
 
 Private state requires commitments and nullifiers ([Hopwood et al.](https://eprint.iacr.org/2018/962.pdf)). On Solana, nullifiers are typically represented as PDAs — each costing a rent-exempt minimum in permanently locked SOL.
 
@@ -85,6 +51,40 @@ We analyzed [Privacy Cash](https://privacy.cash) (`9fhQBbumKEFuXtMBDw8AaQyAjCorL
 *Counted via `getProgramAccounts` filtered by nullifier discriminator (`fa1feeb1d56230ac`) on Feb 5, 2026. Program has 362,264 total accounts; 279,836 are 9-byte nullifier PDAs, the rest are UTXO notes, merkle trees, and config.*
 
 View protocol analytics: [Privacy Cash on OrbMarkets](https://orbmarkets.io/protocol/9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD)
+
+### 2. Unified SOL: Yield-Bearing Shielded SOL
+
+SOL equivalents (wSOL, jitoSOL, mSOL, bSOL) aggregate into unified anonymity set for fungibility in-circuit, receive yield-bearing shielded SOL that earns staking yield in-circuit.
+
+<!-- <p align="center">
+  <img src="docs/unified-sol.svg" alt="Unified SOL Pool" width="700"/>
+</p> -->
+
+See [Yield Mechanism](docs/YIELD_MECHANISM.md) for details.
+
+**Epoch duration**: `UPDATE_SLOT_INTERVAL = 2700 slots × 400ms/slot = 1080s = 18 min`
+
+```
+        ◄──────────── Epoch N (≥ 2700 slots, ~18 min) ─────────────►
+
+wSOL     ────●──────────────────────────────────────────────────────┐
+          harvest                                                    │
+jitoSOL  ──────●────────────────────────────────────────────────────┤
+            harvest                                                  │
+mSOL     ────────●──────────────────────────────────────────────────┤
+              harvest                                                │
+bSOL     ──────────●────────────────────────────────────────────────┤
+                harvest    ↑ proofs generated against frozen         │
+                           ↑ globalAcc + harvested_exchange_rate     │
+                                               all LSTs harvested ──┤
+                                                                     ▼
+globalAcc ═══════════════════════════════════════════════════ finalize ═══
+          (frozen from prev epoch — proofs target this)   accumulator += Δ
+                                                          freeze new rates
+                                                          epoch N → N+1
+```
+
+> **State Contention Prevention**: Proving is against the frozen `globalAcc` value, which remains stable for a minimum of 2700 slots (~18 min) between `finalize_unified_rewards` calls. This epoch duration accommodates proof generation (10-60s), transaction submission (5-30s), and a safety buffer for retries—ensuring proofs remain valid without risking invalidation from accumulator updates.
 
 ### 3. Multi-Asset Transact with Public-Slot Routing
 
